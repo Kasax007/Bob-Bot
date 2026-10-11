@@ -1,0 +1,147 @@
+package net.kasax.bobbot.bot;
+
+import com.mojang.authlib.GameProfile;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ClientInformation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.UUID;
+
+/** All bots on the server: joining, leaving, ticking their brains, bringing them back after death. */
+public final class BotManager {
+    public static final Logger LOG = LoggerFactory.getLogger("Bob");
+    private static final Map<UUID, Bot> BOTS = new LinkedHashMap<>();
+    private static final int RESPAWN_DELAY = 20; // deathTime stops counting at 20
+
+    private BotManager() {
+    }
+
+    public static void register() {
+        ServerTickEvents.END_SERVER_TICK.register(BotManager::tick);
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            for (Bot bot : new ArrayList<>(BOTS.values())) remove(server, bot);
+            BOTS.clear();
+        });
+    }
+
+    public static Bot spawn(MinecraftServer server, String name, ServerLevel level, Vec3 pos) {
+        Bot existing = byName(name);
+        if (existing != null) return existing;
+        BotPlayer body = BotPlayer.join(server, name, level, pos);
+        Bot bot = new Bot(body);
+        BOTS.put(bot.id, bot);
+        LOG.info("[Bot] {} joined at {}", name, pos);
+        return bot;
+    }
+
+    public static void remove(MinecraftServer server, Bot bot) {
+        bot.navigator().stop();
+        BOTS.remove(bot.id);
+        ServerPlayer body = server.getPlayerList().getPlayer(bot.id);
+        if (body != null) server.getPlayerList().remove(body);
+        LOG.info("[Bot] {} left", bot.name);
+    }
+
+    public static Bot byName(String name) {
+        for (Bot b : BOTS.values()) if (b.name.equalsIgnoreCase(name)) return b;
+        return null;
+    }
+
+    public static Collection<Bot> all() {
+        return BOTS.values();
+    }
+
+    public static boolean isBot(ServerPlayer player) {
+        return player instanceof BotPlayer;
+    }
+
+    /** A bot's new body after a respawn (called from PlayerList#respawn, see BotRespawnMixin). */
+    public static ServerPlayer newBody(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation info) {
+        return new BotPlayer(server, level, profile, info);
+    }
+
+    private static void tick(MinecraftServer server) {
+        if (BOTS.isEmpty()) return;
+        for (Bot bot : new ArrayList<>(BOTS.values())) {
+            ServerPlayer now = server.getPlayerList().getPlayer(bot.id);
+            if (!(now instanceof BotPlayer body)) {
+                BOTS.remove(bot.id); // kicked or removed by something else
+                continue;
+            }
+            if (body != bot.body()) bot.attach(body);
+            if (body.isDeadOrDying()) {
+                body.stopInputs();
+                if (bot.lastDeath == null || body.level().getGameTime() - bot.lastDeath.time() > 100) {
+                    // (The blow that killed it, for the log: the bot is not ticked any more once dead.)
+                    bot.logHits();
+                    var src = body.getLastDamageSource();
+                    boolean gone = body.isInLava() || src != null && (src.is(net.minecraft.tags.DamageTypeTags.IS_FIRE) && body.isInLava()
+                            || src.is(net.minecraft.world.damagesource.DamageTypes.FELL_OUT_OF_WORLD));
+                    bot.lastDeath = new Bot.Death(body.level().dimension(), body.blockPosition(), body.level().getGameTime(), !gone,
+                            src != null && src.getEntity() instanceof net.minecraft.world.entity.LivingEntity,
+                            net.kasax.bobbot.bot.task.SurfaceTask.underground(body));
+                    // (Where the killer stands - the outpost, the cave mouth - is avoided a while.)
+                    if (src != null && src.getEntity() instanceof net.minecraft.world.entity.monster.Enemy killer)
+                        bot.markDanger(((net.minecraft.world.entity.Entity) killer).blockPosition());
+                }
+                // Dead at night: the respawn button waits for the morning (at most some six
+                // minutes), as a player does - back at the spawn in the dark with nothing, among
+                // the monsters that stand about it, it died ten times over in two minutes (seed 77).
+                // (The body's own death clock stops at twenty: the server's clock counts.)
+                long serverNow = server.overworld().getGameTime();
+                if (bot.deadSince < 0) bot.deadSince = serverNow;
+                long clock = server.overworld().getOverworldClockTime() % 24000;
+                boolean night = clock >= 12800 && clock < 23200;
+                if (body.deathTime >= RESPAWN_DELAY && night && serverNow - bot.deadSince < 7200) {
+                    if (!bot.waitingForDawn) {
+                        bot.waitingForDawn = true;
+                        bot.say("dead at night: back at dawn, not into the dark with nothing");
+                    }
+                    continue;
+                }
+                if (body.deathTime >= RESPAWN_DELAY) {
+                    bot.deadSince = -1;
+                    bot.waitingForDawn = false;
+                    // The way a client asks to respawn (the respawn button): the network handler
+                    // respawns it, acts for the new body from then on, and forgets that it was
+                    // waiting for the respawn. (Respawned past it, the game went on waiting, and
+                    // kept the bot from all harm for the rest of the game - in lava unharmed.)
+                    body.connection.handleClientCommand(new net.minecraft.network.protocol.game.ServerboundClientCommandPacket(
+                            net.minecraft.network.protocol.game.ServerboundClientCommandPacket.Action.PERFORM_RESPAWN));
+                    ServerPlayer reborn = body.connection.player;
+                    if (reborn instanceof BotPlayer b) bot.attach(b);
+                    if (bot.brain() != null) bot.brain().respawned(bot);
+                }
+                continue;
+            }
+            bot.tick();
+        }
+    }
+
+    /** Players who asked to read Bob's thinking aloud in chat ({@code /bob debug}); everyone else only the log. */
+    public static final java.util.Set<UUID> DEBUG_LISTENERS = new java.util.HashSet<>();
+
+    /** A line in the log (and for those listening, in chat) about what a bot is up to. */
+    static void debug(ServerPlayer bot, String text) {
+        LOG.info("[Bot] {}: {}", bot.getGameProfile().name(), text);
+        MinecraftServer server = bot.level().getServer();
+        if (server == null || DEBUG_LISTENERS.isEmpty()) return;
+        Component line = Component.literal("[" + bot.getGameProfile().name() + "] " + text).withStyle(ChatFormatting.DARK_AQUA);
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            if (!(p instanceof BotPlayer) && DEBUG_LISTENERS.contains(p.getUUID())) p.sendSystemMessage(line);
+        }
+    }
+}
