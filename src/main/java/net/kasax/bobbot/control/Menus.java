@@ -65,8 +65,14 @@ public final class Menus {
                 button(l.t("Storage", "Lager"), "/bob chest add storage", l.t("Part of your sorted storage", "Teil deines sortierten Lagers")),
                 button(l.t("Wand", "Zauberstab"), "/bob wand", l.t("Mark chests and areas by clicking", "Kisten und Bereiche per Klick markieren")),
                 button(l.t("List", "Liste"), "/bob chest list", l.t("His chests", "Seine Kisten"))));
+        p.sendSystemMessage(row(l, "Places", "Orte",
+                button(l.t("Protect here", "Hier schützen"), "/bob protect", l.t("Bob never breaks or builds anything around you", "Bob baut um dich herum nie etwas ab oder hin")),
+                button(l.t("Areas", "Bereiche"), "/bob area list", l.t("His work areas, storage rooms, protected areas", "Seine Arbeitsbereiche, Lagerräume, geschützten Bereiche")),
+                button(l.t("May you?", "Darfst du?"), "/bob protect check", l.t("Would Bob break the block you look at?", "Würde Bob den Block abbauen, auf den du schaust?")),
+                button(l.t("Set home", "Zuhause setzen"), "/bob home set", l.t("Your position becomes his home", "Deine Position wird sein Zuhause"))));
         p.sendSystemMessage(row(l, "More", "Mehr",
                 button(l.t("Inventory", "Inventar"), "/bob inventory", l.t("Open his inventory: give him tools, armour, food", "Sein Inventar öffnen: Werkzeug, Rüstung, Essen geben")),
+                button(l.t("Give me all", "Gib mir alles"), "/bob giveall", l.t("Everything but his kit, to you", "Alles außer seiner Ausrüstung, an dich")),
                 button(l.t("Queue", "Warteschlange"), "/bob queue", l.t("What comes next", "Was als Nächstes kommt")),
                 button(l.t("Settings", "Einstellungen"), "/bob settings", l.t("How he goes about things", "Wie er vorgeht")),
                 button(l.t("Home", "Nach Hause"), "/bob home", l.t("Back to his home", "Zurück nach Hause"))));

@@ -45,7 +45,7 @@ public final class HuntJob extends Job {
 
     @Override
     public String describe(Lang l) {
-        String what = count + "× " + (type == null ? "?" : type.getDescription().getString());
+        String what = count + "× " + (type == null ? "?" : net.kasax.bobbot.control.Names.display(type, l));
         return l.t("hunt " + what, what + " jagen");
     }
 

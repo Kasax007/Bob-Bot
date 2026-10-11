@@ -99,6 +99,72 @@ public final class Names {
         mob(net.minecraft.world.entity.EntityTypes.SQUID, "squid", "tintenfisch", "tintenfische");
     }
 
+    // ---- names to show (in the owner's language) --------------------------------------------------
+
+    private record Shown(String en, String de) {
+    }
+
+    private static final Map<Item, Shown> SHOWN = new HashMap<>();
+    private static final Map<EntityType<?>, Shown> SHOWN_MOBS = new HashMap<>();
+    private static final java.util.List<java.util.Map.Entry<Set<Item>, Shown>> GROUPS = new java.util.ArrayList<>();
+
+    static {
+        GROUPS.add(Map.entry(tagged(ItemTags.LOGS), new Shown("logs", "Holzstämme")));
+        GROUPS.add(Map.entry(tagged(ItemTags.PLANKS), new Shown("planks", "Bretter")));
+        GROUPS.add(Map.entry(tagged(ItemTags.WOOL), new Shown("wool", "Wolle")));
+        GROUPS.add(Map.entry(tagged(ItemTags.SAPLINGS), new Shown("saplings", "Setzlinge")));
+        String[][] shown = {
+                {"cobblestone", "cobblestone", "Bruchstein"}, {"iron_ingot", "iron ingots", "Eisenbarren"}, {"raw_iron", "raw iron", "Roheisen"},
+                {"gold_ingot", "gold ingots", "Goldbarren"}, {"copper_ingot", "copper ingots", "Kupferbarren"}, {"diamond", "diamonds", "Diamanten"},
+                {"emerald", "emeralds", "Smaragde"}, {"coal", "coal", "Kohle"}, {"charcoal", "charcoal", "Holzkohle"}, {"bread", "bread", "Brot"},
+                {"cooked_beef", "steak", "Steak"}, {"apple", "apples", "Äpfel"}, {"carrot", "carrots", "Karotten"}, {"potato", "potatoes", "Kartoffeln"},
+                {"wheat", "wheat", "Weizen"}, {"torch", "torches", "Fackeln"}, {"chest", "chests", "Kisten"}, {"crafting_table", "crafting tables", "Werkbänke"},
+                {"furnace", "furnaces", "Öfen"}, {"sand", "sand", "Sand"}, {"gravel", "gravel", "Kies"}, {"glass", "glass", "Glas"}, {"dirt", "dirt", "Erde"},
+                {"clay_ball", "clay", "Ton"}, {"leather", "leather", "Leder"}, {"string", "string", "Fäden"}, {"bone", "bones", "Knochen"},
+                {"feather", "feathers", "Federn"}, {"arrow", "arrows", "Pfeile"}, {"stick", "sticks", "Stöcke"}, {"sugar_cane", "sugar cane", "Zuckerrohr"},
+                {"pumpkin", "pumpkins", "Kürbisse"}, {"melon_slice", "melon slices", "Melonenscheiben"}, {"egg", "eggs", "Eier"}, {"obsidian", "obsidian", "Obsidian"},
+                {"slime_ball", "slime balls", "Schleimbälle"}, {"gunpowder", "gunpowder", "Schwarzpulver"}, {"ender_pearl", "ender pearls", "Enderperlen"},
+                {"stone", "stone", "Stein"}, {"redstone", "redstone", "Redstone"}, {"lapis_lazuli", "lapis lazuli", "Lapislazuli"}, {"quartz", "quartz", "Quarz"},
+                {"oak_log", "oak logs", "Eichenstämme"}, {"birch_log", "birch logs", "Birkenstämme"}, {"spruce_log", "spruce logs", "Fichtenstämme"},
+                {"oak_planks", "oak planks", "Eichenbretter"}, {"cooked_porkchop", "cooked porkchops", "gebratene Koteletts"}, {"cooked_chicken", "cooked chicken", "gebratenes Hühnchen"},
+                {"wheat_seeds", "wheat seeds", "Weizenkörner"}, {"bucket", "buckets", "Eimer"}, {"water_bucket", "water buckets", "Wassereimer"},
+        };
+        for (String[] r : shown) {
+            Item it = BuiltInRegistries.ITEM.getValue(Identifier.withDefaultNamespace(r[0]));
+            if (it != Items.AIR) SHOWN.put(it, new Shown(r[1], r[2]));
+        }
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.COW, new Shown("cows", "Kühe"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.PIG, new Shown("pigs", "Schweine"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.SHEEP, new Shown("sheep", "Schafe"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.CHICKEN, new Shown("chickens", "Hühner"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.RABBIT, new Shown("rabbits", "Kaninchen"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.ZOMBIE, new Shown("zombies", "Zombies"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.SKELETON, new Shown("skeletons", "Skelette"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.SPIDER, new Shown("spiders", "Spinnen"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.CREEPER, new Shown("creepers", "Creeper"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.ENDERMAN, new Shown("endermen", "Endermen"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.SLIME, new Shown("slimes", "Schleime"));
+        SHOWN_MOBS.put(net.minecraft.world.entity.EntityTypes.SQUID, new Shown("squids", "Tintenfische"));
+    }
+
+    /** What to call these items for the owner: "logs" for any log, "Eisenbarren", else the game's own (English) name. */
+    public static String display(Set<Item> items, net.kasax.bobbot.companion.Lang l) {
+        if (items.isEmpty()) return "?";
+        for (var g : GROUPS) if (g.getKey().containsAll(items) && items.size() > 1) return l.t(g.getValue().en(), g.getValue().de());
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (Item i : items) {
+            Shown sh = SHOWN.get(i);
+            out.add(sh != null ? l.t(sh.en(), sh.de()) : i.getDefaultInstance().getHoverName().getString());
+            if (out.size() == 3) break;
+        }
+        return String.join(l.t(" or ", " oder "), out) + (items.size() > 3 ? " …" : "");
+    }
+
+    public static String display(EntityType<?> type, net.kasax.bobbot.companion.Lang l) {
+        Shown sh = SHOWN_MOBS.get(type);
+        return sh != null ? l.t(sh.en(), sh.de()) : type.getDescription().getString();
+    }
+
     static Set<Item> tagged(net.minecraft.tags.TagKey<Item> tag) {
         Set<Item> out = new LinkedHashSet<>();
         for (Item i : BuiltInRegistries.ITEM) if (new ItemStack(i).is(tag)) out.add(i);

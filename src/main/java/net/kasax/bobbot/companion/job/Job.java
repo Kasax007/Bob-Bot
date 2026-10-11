@@ -53,8 +53,14 @@ public abstract class Job {
         return false;
     }
 
-    /** Why it stopped unfinished, if it did (for the owner). */
-    public String trouble;
+    /** Why it stopped unfinished, if it did (for the owner), in English and in German. */
+    public String trouble, troubleDe;
+
+    /** Stops the job unfinished, saying why. */
+    protected void fail(String en, String de) {
+        trouble = en;
+        troubleDe = de;
+    }
 
     protected void save(CompoundTag t) {
     }

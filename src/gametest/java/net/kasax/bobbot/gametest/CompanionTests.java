@@ -42,6 +42,7 @@ public class CompanionTests {
         Companion c = CompanionManager.create(owner, "Bobt" + N.incrementAndGet());
         CompanionManager.summon(h.getLevel().getServer(), c, h.getLevel(), Vec3.atBottomCenterOf(a.abs(x, FEET, z)));
         c.bot.body().setGameMode(net.minecraft.world.level.GameType.SURVIVAL);
+        c.bot.verbose = true;
         a.use(c.bot);
         return c;
     }

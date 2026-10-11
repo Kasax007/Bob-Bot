@@ -139,7 +139,28 @@ public final class Orders {
         ok(p, c, "Left \"" + was + "\".", "\"" + was + "\" abgebrochen.");
     }
 
+    /**
+     * "Get me ...": for the owner, out of his chests first where there is some (quicker than
+     * mining it), and only the rest mined, crafted or hunted.
+     */
     public static void get(ServerPlayer p, Companion c, Set<Item> items, int count, GatherJob.Then then) {
+        if (then == GatherJob.Then.OWNER && present(p, c)) {
+            var level = (net.minecraft.server.level.ServerLevel) c.bot.body().level();
+            int stored = net.kasax.bobbot.storage.Storage.total(level, net.kasax.bobbot.storage.Storage.boxes(c, level,
+                    java.util.EnumSet.allOf(RoleChest.Role.class)), st -> items.contains(st.getItem()));
+            int carried = net.kasax.bobbot.bot.plan.ObtainPlanner.countAny(c.bot.body(), items);
+            if (stored > 0) {
+                int avail = stored + carried;
+                var fetch = new net.kasax.bobbot.companion.job.FetchJob(items, Math.min(count, avail));
+                give(p, c, fetch, false);
+                if (avail < count) {
+                    c.insertAfter(fetch, new GatherJob(items, count - avail, then));
+                    ok(p, c, "Your chests have " + stored + "; the other " + (count - avail) + " I'll get myself.",
+                            "In deinen Kisten sind " + stored + "; die anderen " + (count - avail) + " besorge ich selbst.");
+                }
+                return;
+            }
+        }
         give(p, c, new GatherJob(items, count, then), false);
     }
 

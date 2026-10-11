@@ -73,6 +73,7 @@ public final class Companion {
     public void say(MinecraftServer server, String en, String de) {
         Lang l = lang(server);
         String text = l.t(en, de);
+        if (bot != null && bot.verbose) net.kasax.bobbot.BobBot.LOG.info("<{}> {}", name, text);
         log.addLast(text);
         while (log.size() > 50) log.removeFirst();
         ServerPlayer p = ownerPlayer(server);
@@ -81,6 +82,7 @@ public final class Companion {
 
     /** A line from Bob with anything in it (clickable buttons, say). */
     public void tell(MinecraftServer server, Component text) {
+        if (bot != null && bot.verbose) net.kasax.bobbot.BobBot.LOG.info("<{}> {}", name, text.getString());
         log.addLast(text.getString());
         while (log.size() > 50) log.removeFirst();
         ServerPlayer p = ownerPlayer(server);
@@ -121,6 +123,26 @@ public final class Companion {
     /** Queued behind what is going on. */
     public void enqueue(Job job) {
         queue.addLast(job);
+    }
+
+    /** Queued right after {@code anchor} (the job now or one in the queue); at the end if that is not there. */
+    public void insertAfter(Job anchor, Job job) {
+        if (current == anchor) {
+            queue.addFirst(job);
+            return;
+        }
+        Deque<Job> rebuilt = new ArrayDeque<>();
+        boolean placed = false;
+        for (Job j : queue) {
+            rebuilt.addLast(j);
+            if (j == anchor && !placed) {
+                rebuilt.addLast(job);
+                placed = true;
+            }
+        }
+        if (!placed) rebuilt.addLast(job);
+        queue.clear();
+        queue.addAll(rebuilt);
     }
 
     /** What he is doing now is put back at the head of the queue (unless endless) and this starts. */

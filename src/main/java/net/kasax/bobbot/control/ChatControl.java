@@ -143,6 +143,8 @@ public final class ChatControl {
     }
 
     private static void get(ServerPlayer p, Companion c, String t, int n) {
+        // ("aus dem Lager", "from the chest": where from is Bob's to know - his chests come first anyway.)
+        t = t.replaceAll("\\b(aus|from|von)\\s+(dem|der|den|the|my|meinem|meiner|meinen|deinem|unserem|unserer)?\\s*(lager|kiste|kisten|truhe|truhen|storage|chest|chests)\\b", " ");
         boolean chest = t.matches(".*\\b(für die kiste|fuer die kiste|in die kiste|for the chest|into the chest|to the chest|in the chest)\\b.*");
         String what = object(t.replaceAll("\\b(für die kiste|fuer die kiste|in die kiste|for the chest|into the chest|to the chest|in the chest)\\b", " "),
                 "\\b(bring\\w*|hol\\w*|get|besorg\\w*|gib|give|beschaff\\w*)\\b");

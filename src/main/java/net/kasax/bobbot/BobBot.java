@@ -18,6 +18,7 @@ public final class BobBot implements ModInitializer {
         // (The companions first: on shutdown they note where each Bob stands before the bots leave.)
         CompanionManager.register();
         net.kasax.bobbot.protect.Protection.register();
+        net.kasax.bobbot.storage.StorageOrders.register();
         BotManager.register();
         BobCommands.register();
         ChatControl.register();

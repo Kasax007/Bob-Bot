@@ -16,7 +16,9 @@ public record Area(String name, ResourceKey<Level> dim, BlockPos min, BlockPos m
         /** Bob's to work in (a field to farm, a forest to fell, a hole to dig). */
         WORK("work", "Arbeit"),
         /** Never a block broken or placed in it, whatever the job. */
-        PROTECTED("protected", "geschützt");
+        PROTECTED("protected", "geschützt"),
+        /** A storage room: every chest and barrel in it is part of the owner's sorted storage. */
+        STORAGE("storage", "Lager");
 
         public final String en, de;
 
@@ -30,6 +32,7 @@ public record Area(String name, ResourceKey<Level> dim, BlockPos min, BlockPos m
             for (Kind k : values()) if (k.name().toLowerCase(Locale.ROOT).equals(v) || k.en.equals(v) || k.de.equals(v)) return k;
             return switch (v) {
                 case "protect", "schutz", "schützen" -> PROTECTED;
+                case "lagerraum", "storeroom", "lager", "sort" -> STORAGE;
                 case "arbeiten", "feld", "field", "farm" -> WORK;
                 default -> null;
             };

@@ -61,6 +61,7 @@ public final class CompanionBrain implements BotBrain {
             } catch (RuntimeException e) {
                 BobBot.LOG.warn("[Bob] {}: job {} failed", c.name, job.kind(), e);
                 job.trouble = "something went wrong (" + e.getClass().getSimpleName() + ")";
+                job.troubleDe = "etwas ist schiefgegangen (" + e.getClass().getSimpleName() + ")";
                 t = null;
             }
             if (t == null) {
@@ -92,7 +93,7 @@ public final class CompanionBrain implements BotBrain {
             if (job.delivers()) Deliveries.requestFinal(c);
         } else {
             c.say(server, "I stopped \"" + job.describe(Lang.EN) + "\": " + job.trouble + ".",
-                    "Ich habe \"" + job.describe(Lang.DE) + "\" abgebrochen: " + job.trouble + ".");
+                    "Ich habe \"" + job.describe(Lang.DE) + "\" abgebrochen: " + (job.troubleDe != null ? job.troubleDe : job.trouble) + ".");
         }
     }
 

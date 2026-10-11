@@ -20,7 +20,7 @@ public final class HomeJob extends Job {
         if (sent || c.home == null) return null;
         sent = true;
         if (c.home.dimension() != bot.body().level().dimension()) {
-            trouble = "home is in another dimension";
+            fail("home is in another dimension", "mein Zuhause ist in einer anderen Dimension");
             return null;
         }
         return new GoToTask(c.home.pos(), 2);

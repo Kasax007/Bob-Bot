@@ -25,6 +25,9 @@ public final class Jobs {
         register("gather", GatherJob::new);
         register("hunt", HuntJob::new);
         register("fish", FishJob::new);
+        register("sort", SortJob::new);
+        register("fetch", FetchJob::new);
+        register("deposit", net.kasax.bobbot.storage.StorageOrders.DepositJob::new);
     }
 
     /** A job from its saved form, or null if the kind is unknown (a newer version's). */

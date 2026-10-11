@@ -64,7 +64,7 @@ public final class GatherJob extends Job {
             if (have(bot) >= count) got = true;
             else {
                 if (++tries > 4) {
-                    trouble = "could not get " + ObtainPlanner.names(items);
+                    fail("I could not get " + net.kasax.bobbot.control.Names.display(items, Lang.EN), "ich konnte keine " + net.kasax.bobbot.control.Names.display(items, Lang.DE) + " besorgen");
                     return null;
                 }
                 return new ObtainTask(items, count);
@@ -86,7 +86,7 @@ public final class GatherJob extends Job {
 
     @Override
     public String describe(Lang l) {
-        String what = count + "× " + ObtainPlanner.names(items);
+        String what = count + "× " + net.kasax.bobbot.control.Names.display(items, l);
         return switch (then) {
             case OWNER -> l.t("bring you " + what, "dir " + what + " bringen");
             case CHEST -> l.t("get " + what + " for the chest", what + " für die Kiste holen");
