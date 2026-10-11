@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "bobbot-gametest",
+  "version": "1.0.0",
+  "name": "Bob tests",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-gametest": [
+      "net.kasax.bobbot.gametest.CompanionTests"
+    ]
+  },
+  "depends": {
+    "bobbot": "*",
+    "fabric-gametest-api-v1": "*"
+  }
+}
