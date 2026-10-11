@@ -3,7 +3,7 @@ package net.kasax.bobbot.companion.job;
 import net.kasax.bobbot.bot.Bot;
 import net.kasax.bobbot.bot.BotTask;
 import net.kasax.bobbot.bot.task.GoToTask;
-import net.kasax.bobbot.bot.task.WaitTask;
+import net.kasax.bobbot.companion.task.IdleTask;
 import net.kasax.bobbot.companion.Companion;
 import net.kasax.bobbot.companion.Lang;
 import net.minecraft.core.BlockPos;
@@ -29,7 +29,7 @@ public final class StayJob extends Job {
     public BotTask next(Companion c, Bot bot) {
         if (at == null) at = bot.body().blockPosition();
         if (bot.body().blockPosition().distSqr(at) > 4) return new GoToTask(at, 1);
-        return new WaitTask(40);
+        return new IdleTask(40, c.ownerPlayer(bot.server()));
     }
 
     @Override

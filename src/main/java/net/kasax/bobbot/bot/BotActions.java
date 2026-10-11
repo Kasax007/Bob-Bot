@@ -44,6 +44,11 @@ public final class BotActions {
 
     private final BotPlayer bot;
     private final BotTools tools;
+    /** What it must leave alone (set by the bot's owner; nothing by default). */
+    public BlockGuard guard = BlockGuard.NONE;
+    /** The last block the guard kept it from breaking, and when (game time). */
+    public BlockPos refused;
+    public long refusedAt = -1000;
     private BlockPos breaking;
     private float progress;
     private int lastStage = -1, ticks;
@@ -57,8 +62,15 @@ public final class BotActions {
         return bot.getEyePosition().distanceTo(Vec3.atCenterOf(pos)) <= REACH;
     }
 
+    /** Whether the guard lets it break the block at {@code pos}. */
+    public boolean mayBreak(BlockPos pos) {
+        ServerLevel level = (ServerLevel) bot.level();
+        return guard.mayBreak(level, pos, level.getBlockState(pos));
+    }
+
     /**
      * One tick of breaking {@code pos}. Returns true once the block is gone (also if it already was).
+     * A block the guard keeps it from is not touched: false, and {@link #refused} says so.
      */
     public boolean breakTick(BlockPos pos) {
         ServerLevel level = (ServerLevel) bot.level();
@@ -66,6 +78,12 @@ public final class BotActions {
         if (state.isAir() || !state.getFluidState().isEmpty() && state.getCollisionShape(level, pos).isEmpty()) {
             reset();
             return true;
+        }
+        if (!guard.mayBreak(level, pos, state)) {
+            reset();
+            refused = pos.immutable();
+            refusedAt = level.getGameTime();
+            return false;
         }
         if (!pos.equals(breaking)) {
             reset();
@@ -152,6 +170,7 @@ public final class BotActions {
     public boolean placeThrowaway(BlockPos target) {
         int slot = throwawaySlot();
         if (slot < 0) return false;
+        if (!guard.mayPlace((ServerLevel) bot.level(), target)) return false;
         tools.select(slot);
         return placeHeld(target);
     }
@@ -184,6 +203,29 @@ public final class BotActions {
         if (best == null) return null;
         tools.select(slot);
         return placeHeld(best) ? best : null;
+    }
+
+    /**
+     * Uses the block at {@code pos} with whatever is in hand, as a right click does without
+     * crouching: a door or a gate opens (or shuts), a lever flips.
+     */
+    public boolean use(BlockPos pos) {
+        ServerLevel level = (ServerLevel) bot.level();
+        Vec3 at = Vec3.atCenterOf(pos);
+        Vec3 eye = bot.getEyePosition();
+        Direction face = Direction.getApproximateNearest(eye.x - at.x, eye.y - at.y, eye.z - at.z);
+        Vec3 hitAt = at.add(face.getStepX() * 0.5, face.getStepY() * 0.5, face.getStepZ() * 0.5);
+        bot.lookAt(hitAt);
+        boolean wasCrouching = bot.isShiftKeyDown();
+        bot.setShiftKeyDown(false);
+        try {
+            InteractionResult r = bot.gameMode.useItemOn(bot, level, bot.getMainHandItem(), InteractionHand.MAIN_HAND,
+                    new BlockHitResult(hitAt, face, pos, false));
+            if (r.consumesAction()) bot.swing(InteractionHand.MAIN_HAND, net.minecraft.world.item.component.SwingAnimation.DEFAULT, true);
+            return r.consumesAction();
+        } finally {
+            bot.setShiftKeyDown(wasCrouching);
+        }
     }
 
     /** Places the block item in hand at {@code target}, against any solid neighbour. */

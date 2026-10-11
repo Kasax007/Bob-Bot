@@ -90,6 +90,8 @@ public final class BotNavigator {
     private double near;
     /** What was left of a path dropped (stuck, the world changed): the next search keeps to it where it can. */
     private java.util.Set<Long> rest;
+    /** Doors and gates it opened on the way, to shut behind it (as a guest does). */
+    private final java.util.List<BlockPos> opened = new java.util.ArrayList<>();
 
     public BotNavigator(BotPlayer bot, BotTools tools, BotActions actions) {
         this.bot = bot;
@@ -299,6 +301,7 @@ public final class BotNavigator {
 
     public Status tick() {
         tickedAt = bot.tickCount;
+        if (!opened.isEmpty()) shutBehind();
         if (status != Status.MOVING) return status;
         BlockPos feet = feet();
         if (goal.test(feet) && bot.onGround() || goal.test(feet) && bot.isInWater()) {
@@ -357,6 +360,12 @@ public final class BotNavigator {
                         bot.forward = Math.min(bot.forward, 0.15f);
                         return status;
                     }
+                }
+                // (Not this one: somebody's house, a chest. Another way round.)
+                if (!actions.mayBreak(b)) {
+                    avoid.add(step.to().asLong());
+                    dropPath("guarded " + b.toShortString());
+                    return status;
                 }
                 actions.breakTick(b);
                 digging = true;
@@ -483,6 +492,20 @@ public final class BotNavigator {
             }
         }
         if (step.leap()) return leap(to, feet);
+        // A door or a gate shut across the way: opened from right in front of it (and shut again
+        // once through).
+        BlockPos door = shutPassage(to);
+        if (door != null && actions.inReach(door) && feet.distManhattan(to) <= 1) {
+            bot.stopInputs();
+            if (actions.use(door)) {
+                if (!opened.contains(door)) opened.add(door);
+            } else if (++stuck > STUCK_TICKS) {
+                stuck = 0;
+                avoid.add(to.asLong());
+                dropPath("door " + door.toShortString());
+            }
+            return status;
+        }
         // The world still as planned for this step? (A block put or broken since, water run in.)
         if (!stillValid(step, feet)) {
             dropPath("invalid " + step.to().toShortString());
@@ -755,6 +778,8 @@ public final class BotNavigator {
         BlockPos to = step.to();
         for (BlockPos c : new BlockPos[]{to, to.above()}) {
             var st = level.getBlockState(c);
+            // (A doorway: opened on the way.)
+            if (BotPathfinder.passage(st)) continue;
             // (Lava is no place to step into - unless it is in it already and getting out.)
             if (!st.getCollisionShape(level, c).isEmpty() || st.getFluidState().is(net.minecraft.tags.FluidTags.LAVA) && !bot.isInLava()) return false;
         }
@@ -802,6 +827,46 @@ public final class BotNavigator {
         BlockPos ahead = BlockPos.containing(bot.getX() + ux * 0.45, bot.getY() - 0.5, bot.getZ() + uz * 0.45);
         bot.jump = bot.onGround() && bot.level().getBlockState(ahead).getCollisionShape(bot.level(), ahead).isEmpty();
         return status;
+    }
+
+    /** The door (its lower half) or gate shut in the cells of a step, or null. */
+    private BlockPos shutPassage(BlockPos to) {
+        for (BlockPos c : new BlockPos[]{to, to.above()}) {
+            var st = bot.level().getBlockState(c);
+            if (st.getBlock() instanceof net.minecraft.world.level.block.DoorBlock d) {
+                if (st.getValue(net.minecraft.world.level.block.DoorBlock.OPEN) || !d.type().canOpenByHand()) return null;
+                return st.getValue(net.minecraft.world.level.block.DoorBlock.HALF) == net.minecraft.world.level.block.state.properties.DoubleBlockHalf.UPPER ? c.below() : c;
+            }
+            if (st.getBlock() instanceof net.minecraft.world.level.block.FenceGateBlock && !st.getValue(net.minecraft.world.level.block.FenceGateBlock.OPEN)) return c;
+        }
+        return null;
+    }
+
+    /**
+     * The doors and gates it opened, shut again once it is through and clear of them (not while
+     * the way goes back through, not from further than it reaches).
+     */
+    private void shutBehind() {
+        var level = bot.level();
+        for (var it = opened.iterator(); it.hasNext(); ) {
+            BlockPos d = it.next();
+            var st = level.getBlockState(d);
+            boolean open = st.getBlock() instanceof net.minecraft.world.level.block.DoorBlock ? st.getValue(net.minecraft.world.level.block.DoorBlock.OPEN)
+                    : st.getBlock() instanceof net.minecraft.world.level.block.FenceGateBlock && st.getValue(net.minecraft.world.level.block.FenceGateBlock.OPEN);
+            if (!open || !actions.inReach(d)) {
+                it.remove(); // (shut by someone else, or left behind out of reach)
+                continue;
+            }
+            if (bot.getBoundingBox().inflate(0.4).intersects(new net.minecraft.world.phys.AABB(d).expandTowards(0, 1, 0))) continue;
+            if (path != null) {
+                boolean back = false;
+                for (int i = index; i < Math.min(path.size(), index + 4) && !back; i++) back = path.get(i).to().distManhattan(d) <= 1;
+                if (back) continue;
+            }
+            actions.use(d);
+            it.remove();
+            return; // (one a tick)
+        }
     }
 
     private void advance() {
@@ -972,7 +1037,7 @@ public final class BotNavigator {
             return false;
         }
         ServerLevel level = (ServerLevel) bot.level();
-        BotPathfinder.WorldView view = BotPathfinder.WorldView.capture(level, from, VIEW_CHUNKS);
+        BotPathfinder.WorldView view = BotPathfinder.WorldView.capture(level, from, VIEW_CHUNKS, actions.guard);
         BotPathfinder.Abilities abilities = new BotPathfinder.Abilities(mayBreak, mayPillar && actions.hasThrowaway(),
                 tools.snapshot(), bot.getFoodData().getFoodLevel() > 6, BotActions.buildingBlocks(bot),
                 bot.level().dimension() == net.minecraft.world.level.Level.NETHER);

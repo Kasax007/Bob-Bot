@@ -128,7 +128,7 @@ public final class MineTask implements BotTask {
                 // takes the whole cluster in front of him, not the one ten blocks off next).
                 while (target == null && !vein.isEmpty()) {
                     BlockPos v = vein.poll();
-                    if (!skip.contains(v) && blocks.test(level.getBlockState(v))) target = v;
+                    if (!skip.contains(v) && blocks.test(level.getBlockState(v)) && bot.actions().mayBreak(v)) target = v;
                 }
                 if (target == null && rock(level)) {
                     // Rock and soil: from a wall at its own level (a hillside, a cave wall, the
@@ -155,7 +155,7 @@ public final class MineTask implements BotTask {
                     List<BlockPos> seen = new ArrayList<>();
                     for (BlockPos p : BotWorld.nearestN(level, bot.body().blockPosition(), sealed ? 5 : searching ? 12 : 28, sealed ? 4 : searching ? 8 : 20, blocks, true, skip, 12)) {
                         // (A trunk from the bottom: that one is in reach from the ground.)
-                        for (int i = 0; i < 12 && blocks.test(level.getBlockState(p.below())) && !skip.contains(p.below()); i++) p = p.below();
+                        for (int i = 0; i < 12 && blocks.test(level.getBlockState(p.below())) && !skip.contains(p.below()) && bot.actions().mayBreak(p.below()); i++) p = p.below();
                         if (!seen.contains(p) && worthIt(level, bot, p)) seen.add(p);
                     }
                     if (!seen.isEmpty()) {
@@ -183,7 +183,7 @@ public final class MineTask implements BotTask {
             if (target == null) return search(bot);
             // A trunk (or any column of them) is taken from the bottom: that one is in reach from
             // the ground, the top ones only from a pillar.
-            for (int i = 0; i < 12 && blocks.test(level.getBlockState(target.below())) && !skip.contains(target.below()); i++) target = target.below();
+            for (int i = 0; i < 12 && blocks.test(level.getBlockState(target.below())) && !skip.contains(target.below()) && bot.actions().mayBreak(target.below()); i++) target = target.below();
             if (searching) {
                 bot.navigator().stop();
                 if (explorer != null) explorer.pause(bot);
@@ -287,7 +287,8 @@ public final class MineTask implements BotTask {
             collectTicks = 60;
             lastFind = searchTicks;
             idle = 0;
-        } else if (++idle > 400) {
+        } else if (target.equals(bot.actions().refused) && bot.actions().refusedAt == level.getGameTime() || ++idle > 400) {
+            // (Kept from it - somebody's - or getting nowhere: another one.)
             skip.add(target);
             target = null;
             idle = 0;
@@ -342,7 +343,7 @@ public final class MineTask implements BotTask {
                 if (level.getBlockState(n).isAir() && (level.getBrightness(net.minecraft.world.level.LightLayer.SKY, n) >= 8
                         || level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, n) >= 8)) lit = true;
             }
-            if (dry && lit) return p;
+            if (dry && lit && bot.actions().mayBreak(p)) return p;
             wet.add(p);
         }
         return null;
@@ -519,6 +520,8 @@ public final class MineTask implements BotTask {
     /** Not buried far below the ground when it is a surface thing (and the bot is not down there too). */
     private boolean worthIt(ServerLevel level, Bot bot, BlockPos p) {
         if (bot.dangerous(p)) return false;
+        // (Somebody's house, a village's beams: not to be had, however near.)
+        if (!bot.actions().mayBreak(p)) return false;
         // Under water: diving and digging there (five times slower) is not worth it while there
         // are others on dry land.
         // (Not so for what lies under shallow water as a rule - clay on a river bed - or once a

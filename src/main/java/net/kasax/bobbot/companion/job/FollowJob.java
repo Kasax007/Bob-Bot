@@ -3,7 +3,7 @@ package net.kasax.bobbot.companion.job;
 import net.kasax.bobbot.bot.Bot;
 import net.kasax.bobbot.bot.BotTask;
 import net.kasax.bobbot.bot.task.KillTask;
-import net.kasax.bobbot.bot.task.WaitTask;
+import net.kasax.bobbot.companion.task.IdleTask;
 import net.kasax.bobbot.companion.Companion;
 import net.kasax.bobbot.companion.Lang;
 import net.kasax.bobbot.companion.Settings;
@@ -35,7 +35,7 @@ public final class FollowJob extends Job {
     @Override
     public BotTask next(Companion c, Bot bot) {
         ServerPlayer owner = c.ownerPlayer(bot.server());
-        if (owner == null) return new WaitTask(40);
+        if (owner == null) return new IdleTask(40, null);
         if (guard && c.settings.combat != Settings.Combat.PASSIVE && owner.level() == bot.body().level()) {
             Mob threat = threat(c, owner);
             if (threat != null) return new KillTask(threat).nearby(24);

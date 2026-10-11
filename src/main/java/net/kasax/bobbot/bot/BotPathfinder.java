@@ -81,6 +81,8 @@ public final class BotPathfinder {
     public static final class WorldView {
         private final it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<LevelChunk> chunks = new it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<>();
         final int minY, maxY;
+        /** What the bot must leave alone, as it was when the view was taken. */
+        BlockGuard.Frozen guard = BlockGuard.Frozen.ALL;
 
         private WorldView(int minY, int maxY) {
             this.minY = minY;
@@ -89,6 +91,11 @@ public final class BotPathfinder {
 
         /** The loaded chunks within {@code radius} chunks of {@code center}. */
         public static WorldView capture(ServerLevel level, BlockPos center, int radius) {
+            return capture(level, center, radius, BlockGuard.NONE);
+        }
+
+        /** The same, with what the guard says about them (asked now, on the server thread). */
+        public static WorldView capture(ServerLevel level, BlockPos center, int radius, BlockGuard guard) {
             WorldView v = new WorldView(level.getMinY(), level.getMaxY());
             int cx = center.getX() >> 4, cz = center.getZ() >> 4;
             for (int x = cx - radius; x <= cx + radius; x++) {
@@ -97,6 +104,7 @@ public final class BotPathfinder {
                     if (c != null) v.chunks.put(net.minecraft.world.level.ChunkPos.pack(x, z), c);
                 }
             }
+            if (guard != BlockGuard.NONE) v.guard = guard.freeze(level, v.chunks.keySet());
             return v;
         }
 
@@ -366,6 +374,7 @@ public final class BotPathfinder {
         else if (dy < 0 && dx == 0 && dz == 0) c = FALL[Math.min(-dy, FALL.length - 1)] + CENTRE;
         else if (dy < 0) c = WALK_OFF + FALL[Math.min(-dy, FALL.length - 1)] + CENTRE;
         else c = flatCost * (diagonal ? Math.sqrt(2) : 1);
+        if (passage(s.to())) c += DOOR;
         // Digging while afloat is five times slower (not on the ground), with the head under
         // water five times more.
         // (Every step through lava burns: by far the dearest way, only to get out.)
@@ -405,9 +414,12 @@ public final class BotPathfinder {
         // Water with ground right under the feet (a shallow stream) is walked through, not swum.
         // (Head under water too is swimming, ground or not: up first.)
         boolean swimming = inWater(p) && (!floor || inWater(p.above()));
+        // (In a doorway: out of it straight, not round the door's edge.)
+        boolean inDoorway = passage(p);
         for (int[] d : DIRS) {
             boolean diagonal = d[0] != 0 && d[1] != 0;
             BlockPos t = p.offset(d[0], 0, d[1]);
+            if (diagonal && inDoorway) continue;
             if (diagonal) {
                 // No corner cutting, no digging diagonally.
                 if (clear(t) && clear(t.above()) && clear(p.offset(d[0], 0, 0)) && clear(p.offset(d[0], 1, 0))
@@ -416,12 +428,19 @@ public final class BotPathfinder {
                 }
                 continue;
             }
+            // Through a doorway or a gate: opened, gone through (level only, the head clear or the
+            // door's upper half).
+            if (!swimming && passage(t) && (clear(t.above()) || passage(t.above())) && canStand(t)) {
+                out.add(new Step(t, List.of(), null));
+                continue;
+            }
             // Flat, digging through if needed.
             List<BlockPos> flat = breaksFor(t, t.above());
             if (flat != null && canStand(t)) out.add(new Step(t, flat, null));
             // Bridge: nothing to stand on there, so put a block under it (sneaking at the edge).
             if (abilities.mayPillar() && !swimming && flat != null && flat.isEmpty() && !canStand(t) && (floor || canStand(p))
-                    && clear(t.below()) && !inWater(t.below()) && (abilities.blocks() >= BRIDGE_BLOCKS || !deadlyBelow(t))) {
+                    && clear(t.below()) && !inWater(t.below()) && (abilities.blocks() >= BRIDGE_BLOCKS || !deadlyBelow(t))
+                    && world.guard.mayPlace(t.below())) {
                 out.add(new Step(t, List.of(), t.below()));
             }
             // One up: head room above us, and room at the target one higher.
@@ -491,7 +510,7 @@ public final class BotPathfinder {
                     BlockPos n = t.relative(d);
                     if (!n.equals(p) && solid(n) && !room.contains(n)) against = true;
                 }
-                if (against) out.add(new Step(t.above(), room, t));
+                if (against && world.guard.mayPlace(t)) out.add(new Step(t.above(), room, t));
             }
         }
         // Straight down: dig the block below and stand on the next one.
@@ -517,7 +536,7 @@ public final class BotPathfinder {
         if (swimming && inWater(below)) out.add(new Step(below, List.of(), null));
         // Pillar up: jump and put a block where the feet were.
         // (Not standing in water: a jump from there does not get high enough to set a block.)
-        if (abilities.mayPillar() && !swimming && floor && (placedBelow || !inWater(p))) {
+        if (abilities.mayPillar() && !swimming && floor && (placedBelow || !inWater(p)) && world.guard.mayPlace(p)) {
             List<BlockPos> head = breaksFor(p.above(2));
             if (head != null) out.add(new Step(p.above(), head, p));
         }
@@ -532,7 +551,7 @@ public final class BotPathfinder {
                 if (solid(n) || (inWater(n) || clear(n)) && supportable(n)) holds = true;
             }
             List<BlockPos> head = breaksFor(p.above(2));
-            if (wall && holds && head != null) out.add(new Step(p.above(), head, p));
+            if (wall && holds && head != null && world.guard.mayPlace(p)) out.add(new Step(p.above(), head, p));
         }
         return out;
     }
@@ -711,8 +730,26 @@ public final class BotPathfinder {
         if (s.is(Blocks.TRIPWIRE) || s.is(Blocks.TRIPWIRE_HOOK)) return false; // cutting it without shears sets it off
         float hardness = s.getDestroySpeed(NO_WORLD, p);
         if (hardness < 0 || hardness > 50) return false; // bedrock, obsidian and the like are walls
+        // (Somebody's house, a chest, a marked area: a wall too, however soft.)
+        if (!world.guard.mayBreak(p, s)) return false;
         return breakTicks(s) < 400;
     }
+
+    /**
+     * A door or a gate to go through: opened on the way (wooden doors and fence gates; an iron
+     * door only if it stands open already). Not dug through - somebody's front door.
+     */
+    static boolean passage(BlockState s) {
+        if (s.getBlock() instanceof net.minecraft.world.level.block.DoorBlock d) return d.type().canOpenByHand() || s.getValue(net.minecraft.world.level.block.DoorBlock.OPEN);
+        return s.getBlock() instanceof net.minecraft.world.level.block.FenceGateBlock;
+    }
+
+    private boolean passage(BlockPos p) {
+        return loaded(p) && passage(state(p));
+    }
+
+    /** Ticks to open a door or gate, go through and shut it again. */
+    private static final double DOOR = 8;
 
     /**
      * Blocks better left (Baritone's rules): a silverfish's (it comes out and calls the others),

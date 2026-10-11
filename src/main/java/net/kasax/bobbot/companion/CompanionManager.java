@@ -117,6 +117,10 @@ public final class CompanionManager {
         if (c.bot != null && c.bot.body() != null && !c.bot.body().isRemoved()) return;
         Bot bot = BotManager.spawn(server, c.name, level, pos);
         bot.setBrain(new CompanionBrain(c));
+        // (Somebody's house, a chest, a village: never his to break, whatever the job.)
+        bot.setGuard(new net.kasax.bobbot.protect.CompanionGuard(c));
+        // (His every step in the log only while his owner listens in: /bob debug.)
+        bot.verbose = c.owner != null && BotManager.DEBUG_LISTENERS.contains(c.owner);
         c.bot = bot;
         BobBot.LOG.info("[Bob] {} (of {}) is here at {}", c.name, c.ownerName, pos);
     }

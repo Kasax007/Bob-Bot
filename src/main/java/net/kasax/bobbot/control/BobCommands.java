@@ -50,7 +50,7 @@ public final class BobCommands {
     };
 
     /** Runs an order on the player's Bob (if he has one). */
-    private static int on(CommandContext<CommandSourceStack> ctx, BiConsumer<ServerPlayer, Companion> order) throws CommandSyntaxException {
+    public static int on(CommandContext<CommandSourceStack> ctx, BiConsumer<ServerPlayer, Companion> order) throws CommandSyntaxException {
         ServerPlayer p = ctx.getSource().getPlayerOrException();
         Companion c = Orders.target(p, true);
         if (c == null) return 0;
@@ -58,7 +58,7 @@ public final class BobCommands {
         return 1;
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> simple(String name, BiConsumer<ServerPlayer, Companion> order) {
+    public static LiteralArgumentBuilder<CommandSourceStack> simple(String name, BiConsumer<ServerPlayer, Companion> order) {
         return Commands.literal(name).executes(ctx -> on(ctx, order));
     }
 

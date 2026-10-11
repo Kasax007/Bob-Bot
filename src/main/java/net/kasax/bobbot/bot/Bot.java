@@ -141,6 +141,7 @@ public final class Bot {
         this.body = body;
         this.tools = new BotTools(body);
         this.actions = new BotActions(body, tools);
+        actions.guard = guard;
         this.navigator = new BotNavigator(body, tools, actions);
         // Whatever was going on was about the old body's position and inventory.
         tasks.clear();
@@ -182,6 +183,18 @@ public final class Bot {
 
     public BotBrain brain() {
         return brain;
+    }
+
+    /** What it must leave alone (see {@link BlockGuard}); kept over a respawn. */
+    private BlockGuard guard = BlockGuard.NONE;
+
+    public BlockGuard guard() {
+        return guard;
+    }
+
+    public void setGuard(BlockGuard guard) {
+        this.guard = guard == null ? BlockGuard.NONE : guard;
+        actions.guard = this.guard;
     }
 
     public void setBrain(BotBrain brain) {

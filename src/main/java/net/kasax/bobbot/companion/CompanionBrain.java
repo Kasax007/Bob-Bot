@@ -4,7 +4,7 @@ import net.kasax.bobbot.BobBot;
 import net.kasax.bobbot.bot.Bot;
 import net.kasax.bobbot.bot.BotBrain;
 import net.kasax.bobbot.bot.BotTask;
-import net.kasax.bobbot.bot.task.WaitTask;
+import net.kasax.bobbot.companion.task.IdleTask;
 import net.kasax.bobbot.companion.job.Job;
 import net.kasax.bobbot.companion.task.StayNearTask;
 import net.minecraft.server.level.ServerPlayer;
@@ -33,7 +33,7 @@ public final class CompanionBrain implements BotBrain {
         var server = bot.server();
         if (c.paused) {
             step = null;
-            bot.doNow(new WaitTask(20));
+            bot.doNow(new IdleTask(20, c.ownerPlayer(server)));
             return;
         }
         if (Deliveries.needed(c, bot)) {
@@ -106,7 +106,7 @@ public final class CompanionBrain implements BotBrain {
             return;
         }
         step = null;
-        bot.doNow(new WaitTask(40));
+        bot.doNow(new IdleTask(40, owner));
     }
 
     @Override

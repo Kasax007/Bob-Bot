@@ -44,6 +44,11 @@ public final class ChatControl {
         RULES.add(new Rule(Pattern.compile(regex), handler));
     }
 
+    /** A rule that goes before all others (a phrase that would otherwise read as a plainer order: "protect this house" is not "guard me"). */
+    public static void ruleFirst(String regex, Handler handler) {
+        RULES.add(0, new Rule(Pattern.compile(regex), handler));
+    }
+
     private static final Pattern NUMBER = Pattern.compile("(-?\\d+)");
 
     public static void register() {

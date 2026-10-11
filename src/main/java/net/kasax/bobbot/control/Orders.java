@@ -287,6 +287,7 @@ public final class Orders {
     public static void debug(ServerPlayer p, boolean on) {
         if (on) BotManager.DEBUG_LISTENERS.add(p.getUUID());
         else BotManager.DEBUG_LISTENERS.remove(p.getUUID());
+        for (Companion c : CompanionManager.ofOwner(p.getUUID())) if (c.bot != null) c.bot.verbose = on;
         p.sendSystemMessage(Component.literal("Bob debug " + (on ? "on" : "off")).withStyle(ChatFormatting.GRAY));
     }
 }

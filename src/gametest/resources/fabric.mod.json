@@ -6,7 +6,8 @@
   "environment": "*",
   "entrypoints": {
     "fabric-gametest": [
-      "net.kasax.bobbot.gametest.CompanionTests"
+      "net.kasax.bobbot.gametest.CompanionTests",
+      "net.kasax.bobbot.gametest.ProtectionTests"
     ]
   },
   "depends": {

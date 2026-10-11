@@ -5,10 +5,11 @@
   "mixins": [
     "BotRespawnMixin",
     "ConnectionAccessor",
-    "FishingHookAccessor"
+    "FishingHookAccessor",
+    "BlockItemMixin",
+    "LevelChunkMixin"
   ],
-  "client": [
-  ],
+  "client": [],
   "injectors": {
     "defaultRequire": 1
   }
