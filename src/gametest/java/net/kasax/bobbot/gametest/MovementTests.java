@@ -107,4 +107,25 @@ public class MovementTests {
             }
         };
     }
+
+    /** Under water at the bottom of a flooded shaft, a waterlogged fence across it overhead: the fence dug away, up and out. */
+    @GameTest(structure = STRUCTURE, maxTicks = 900, skyAccess = true, padding = 8)
+    public void airPastWaterloggedFence(GameTestHelper h) {
+        BotArena a = BotArena.flat(h, "air_past_waterlogged_fence");
+        a.fill(19, GROUND - 9, 19, 21, GROUND, 21, Blocks.STONE);
+        a.fill(20, GROUND - 8, 20, 20, GROUND, 20, Blocks.WATER);
+        a.fill(20, GROUND - 5, 20, 20, GROUND - 5, 20,
+                Blocks.OAK_FENCE.defaultBlockState().setValue(net.minecraft.world.level.block.FenceBlock.WATERLOGGED, true));
+        a.spawn(20, GROUND - 8, 20, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.IRON_AXE));
+        var body = a.bot().body();
+        body.setAirSupply(160);
+        boolean[] under = {false}, out = {false};
+        a.run(new net.kasax.bobbot.bot.task.WaitTask(1), 900, () -> {
+            if (a.bot().body() != body || !body.isAlive()) h.fail("air_past_waterlogged_fence: drowned");
+            boolean eyeIn = body.isEyeInFluid(net.minecraft.tags.FluidTags.WATER);
+            under[0] |= eyeIn;
+            out[0] |= under[0] && !eyeIn && body.getY() > a.abs(0, GROUND - 5, 0).getY();
+            return out[0];
+        });
+    }
 }
