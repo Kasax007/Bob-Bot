@@ -8,7 +8,8 @@
     "fabric-gametest": [
       "net.kasax.bobbot.gametest.CompanionTests",
       "net.kasax.bobbot.gametest.ProtectionTests",
-      "net.kasax.bobbot.gametest.StorageTests"
+      "net.kasax.bobbot.gametest.StorageTests",
+      "net.kasax.bobbot.gametest.WorkTests"
     ]
   },
   "depends": {

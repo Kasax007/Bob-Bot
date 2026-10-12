@@ -49,11 +49,17 @@ public final class Menus {
                 button("Stop", "/bob stop", l.t("Stop everything", "Alles abbrechen")),
                 button("Status", "/bob status", l.t("What is Bob doing?", "Was macht Bob?"))));
         p.sendSystemMessage(row(l, "Work", "Arbeit",
-                suggest(l.t("Wood", "Holz"), "/bob wood 64", l.t("Fell trees (never your log houses)", "Bäume fällen (nie deine Holzhäuser)")),
-                suggest(l.t("Strip mine", "Strip-Mine"), "/bob mine strip -58", l.t("A branch mine at that height", "Eine Branch-Mine auf dieser Höhe")),
-                button(l.t("Farm", "Ernten"), "/bob farm", l.t("Harvest and replant the fields nearby", "Felder in der Nähe ernten und neu säen")),
+                suggest(l.t("Wood", "Holz"), "/bob wood 64", l.t("Fell grown trees and replant (never your log houses); no count: on and on", "Gewachsene Bäume fällen und nachpflanzen (nie deine Holzhäuser); ohne Zahl: immer weiter")),
+                suggest(l.t("Strip mine", "Strip-Mine"), "/bob mine -58", l.t("A branch mine at that height (ore, torches, junk thrown away)", "Eine Strip-Mine auf dieser Höhe (Erze, Fackeln, Schutt weg)")),
+                button(l.t("Dig out", "Ausheben"), "/bob dig", l.t("Dig out the box marked with the wand", "Den mit dem Zauberstab markierten Bereich ausheben")),
+                button(l.t("Harvest", "Ernten"), "/bob farm", l.t("Harvest and replant the fields nearby", "Felder in der Nähe ernten und neu säen")),
+                button(l.t("Smelt", "Schmelzen"), "/bob smelt", l.t("Smelt what lies in the drop-off chest", "Einschmelzen, was in der Ablage liegt")),
                 button(l.t("Sort", "Sortieren"), "/bob sort", l.t("Sort into your chests the way you sorted them", "In deine Kisten sortieren, so wie du sortiert hast")),
-                button(l.t("Drop off", "Abliefern"), "/bob deposit", l.t("Empty his pack into the drop-off chest", "Rucksack in die Ablage-Kiste leeren")),
+                button(l.t("Drop off", "Abliefern"), "/bob deposit", l.t("Empty his pack into the drop-off chest", "Rucksack in die Ablage-Kiste leeren"))));
+        p.sendSystemMessage(row(l, "Also", "Auch",
+                button(l.t("Guard here", "Hier bewachen"), "/bob patrol", l.t("Stay here and fight monsters that come near", "Hier bleiben und Monster in der Nähe bekämpfen")),
+                button(l.t("Light up", "Licht"), "/bob light", l.t("Torches until no dark spot is left round you", "Fackeln, bis um dich keine dunkle Stelle mehr ist")),
+                button(l.t("Pick up", "Aufsammeln"), "/bob collect", l.t("Pick up everything lying about", "Alles aufsammeln, was herumliegt")),
                 suggest(l.t("Fish", "Angeln"), "/bob fish 10", l.t("Fish so many catches", "So viele Fänge angeln"))));
         p.sendSystemMessage(row(l, "Get", "Holen",
                 suggest(l.t("Bring me…", "Bring mir…"), "/bob get iron_ingot 16", l.t("Anything: mined, crafted, smelted or hunted", "Alles: abgebaut, gecraftet, geschmolzen oder gejagt")),
