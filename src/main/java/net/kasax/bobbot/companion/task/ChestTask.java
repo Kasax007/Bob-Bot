@@ -47,6 +47,16 @@ public final class ChestTask implements BotTask {
         return new ChestTask(chest, Mode.TAKE, what, count, null, keepFree);
     }
 
+    /** So many of each of these items out of the chest (as far as it has them and the pack takes them). */
+    public static ChestTask takeList(BlockPos chest, java.util.Map<net.minecraft.world.item.Item, Integer> wants, int keepFree) {
+        ChestTask t = new ChestTask(chest, Mode.TAKE, st -> wants.getOrDefault(st.getItem(), 0) > 0, Integer.MAX_VALUE, null, keepFree);
+        t.wants = new java.util.HashMap<>(wants);
+        return t;
+    }
+
+    /** For {@link #takeList}: how many of each are still wanted. */
+    private java.util.Map<net.minecraft.world.item.Item, Integer> wants;
+
     /** These slots of the pack into the chest. */
     public static ChestTask put(BlockPos chest, List<Integer> slots) {
         return new ChestTask(chest, Mode.PUT, st -> true, Integer.MAX_VALUE, slots, 0);
@@ -100,7 +110,10 @@ public final class ChestTask implements BotTask {
                     full = true;
                     break;
                 }
-                ItemStack got = st.split(Math.min(want, st.getCount()));
+                net.minecraft.world.item.Item kind = st.getItem();
+                int limit = wants == null ? want : Math.min(want, wants.getOrDefault(kind, 0));
+                if (limit <= 0) continue;
+                ItemStack got = st.split(Math.min(limit, st.getCount()));
                 int n = got.getCount();
                 inv.add(got);
                 // (What did not go into the pack back into the chest.)
@@ -110,7 +123,8 @@ public final class ChestTask implements BotTask {
                     full = true;
                 }
                 moved += n;
-                want -= n;
+                if (wants != null) wants.merge(kind, -n, Integer::sum);
+                else want -= n;
                 if (full) break;
             }
             container.setChanged();

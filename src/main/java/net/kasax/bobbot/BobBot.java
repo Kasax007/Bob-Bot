@@ -20,6 +20,7 @@ public final class BobBot implements ModInitializer {
         net.kasax.bobbot.protect.Protection.register();
         net.kasax.bobbot.storage.StorageOrders.register();
         net.kasax.bobbot.work.WorkOrders.register();
+        net.kasax.bobbot.build.BuildOrders.register();
         BotManager.register();
         BobCommands.register();
         ChatControl.register();

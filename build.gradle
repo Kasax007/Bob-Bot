@@ -57,3 +57,8 @@ jar {
 		rename { "${it}_${inputs.properties.archivesName}"}
 	}
 }
+
+// Only some scenarios: ./gradlew runGameTest -PbotTest=build_tests
+loom.runs.matching { it.name == 'gameTest' }.configureEach {
+	if (project.hasProperty('botTest')) vmArg "-Dfabric-api.gametest.filter=${project.property('botTest')}"
+}

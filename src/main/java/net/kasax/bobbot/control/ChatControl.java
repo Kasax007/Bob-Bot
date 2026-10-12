@@ -57,11 +57,12 @@ public final class ChatControl {
             String raw = message.signedContent();
             sender.level().getServer().execute(() -> onChat(sender, raw));
         });
-        // (The order of these matters: the first that matches is taken.)
-        rule("\\b(stop|stopp|halt|cancel|abbrechen|hör auf|hoer auf|aufhören|aufhoeren|lass das)\\b", (p, c, t, n) -> Orders.stop(p, c));
-        rule("\\b(pause|pausier\\w*|warte kurz)\\b", (p, c, t, n) -> Orders.pause(p, c, true));
-        rule("\\b(weiter|resume|continue|mach weiter|carry on)\\b", (p, c, t, n) -> Orders.pause(p, c, false));
-        rule("\\b(skip|überspring\\w*|ueberspring\\w*|nächste\\w*|naechste\\w*|next)\\b", (p, c, t, n) -> Orders.skip(p, c));
+        // (The order of these matters: the first that matches is taken. Stopping goes before
+        // everything, whatever else the line says - "stop mining" is a stop.)
+        ruleFirst("\\b(skip|überspring\\w*|ueberspring\\w*|nächste\\w*|naechste\\w*|next)\\b", (p, c, t, n) -> Orders.skip(p, c));
+        ruleFirst("^(weiter|resume|continue|mach weiter|carry on)$", (p, c, t, n) -> Orders.pause(p, c, false));
+        ruleFirst("\\b(pause|pausier\\w*|warte kurz)\\b", (p, c, t, n) -> Orders.pause(p, c, true));
+        ruleFirst("\\b(stop|stopp|halt|cancel|abbrechen|hör auf|hoer auf|aufhören|aufhoeren|lass das)\\b", (p, c, t, n) -> Orders.stop(p, c));
         rule("\\b(help|hilfe|menu|menü|menue|was kannst du|what can you do)\\b|^\\?$", (p, c, t, n) -> Menus.show(p, c));
         rule("\\b(status|was machst du|what are you doing|wie läuft|wie laeuft|how is it going|report|bericht|wo bist du|where are you)\\b",
                 (p, c, t, n) -> Orders.status(p, c));
