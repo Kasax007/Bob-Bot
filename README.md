@@ -15,6 +15,8 @@ fights and eats the same way you do. You can talk to him in chat, click through 
 
 **Bob never breaks what players built.**
 
+Bob also looks after himself. He keeps reckoning how long his hearts last against what is attacking him. When a fight would be lost, he walls himself in, climbs a pillar out of reach, or digs in before it is too late, whatever he was doing. Then he eats and waits until he is well again.
+
 ## Getting started
 
 1. Install Fabric Loader 0.19.5+ and Fabric API for Minecraft 26.3 (Java 25), then drop the Bob jar

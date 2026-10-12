@@ -28,6 +28,10 @@ public final class Bot {
     public final DangerSense danger = new DangerSense(this);
     /** Arrows and fireballs seen coming, and side-stepped (see {@link ThreatSense}). */
     public final ThreatSense threats = new ThreatSense(this);
+    /** How long he has at the rate he is being hurt, and the quickest cover when a fight would not be won in time. */
+    public final Guardian guardian = new Guardian(this);
+    /** Knobs of its play (the self-play matches set them per bot). */
+    public BotParams params = BotParams.DEFAULT;
     /** The crafting table it last put down itself (taken along when it moves on). */
     public net.minecraft.core.BlockPos ownTable;
     /**
@@ -237,6 +241,13 @@ public final class Bot {
         navigator.resumeFor(tasks.peek());
     }
 
+    private BotTask failNow;
+
+    /** {@code task} ends as failed on the next tick, as if it had said so itself (if it is on top then). */
+    public void fail(BotTask task) {
+        failNow = task;
+    }
+
     /** What the reflexes put on top (a fight, a retreat, the shield): the brain leaves the stack alone meanwhile. */
     private BotTask reflexTask;
 
@@ -400,7 +411,12 @@ public final class Bot {
             }
         }
         BotTask.Result r;
-        try {
+        if (task == failNow) {
+            // (Given up from outside - by the guard: a failure like any other, for the task under
+            // it and for the rule on loops.)
+            failNow = null;
+            r = BotTask.Result.FAILED;
+        } else try {
             sinkToDig = false;
             // A walk left off without a word (the task waits for something now, or steers by
             // itself): ended, or the body runs on with the last keys of it until a wall stops it.
@@ -644,6 +660,23 @@ public final class Bot {
             say("up in a tree crown: down through the leaves");
             reflex(new net.kasax.bobbot.bot.task.LeafDescentTask());
             return;
+        }
+        // The guardian: at the rate everything after him hurts him, how long he has - and when no
+        // fight is won in that time, the quickest cover here at once, whatever is going on (a
+        // meal, a run that gets nowhere, the plan): walled in, up a pillar, dug in.
+        if (tasks.stream().noneMatch(Guardian::protective)) {
+            BotTask cover = guardian.stepIn(top);
+            if (cover != null) {
+                actions.reset();
+                navigator.stop();
+                if (retreat != null && tasks.contains(retreat)) {
+                    cancel(retreat);
+                    retreat = null;
+                    body.hurry = false;
+                }
+                reflex(cover);
+                return;
+            }
         }
         if (top instanceof net.kasax.bobbot.bot.task.EatTask || top instanceof net.kasax.bobbot.bot.task.HideTask) return;
         // Getting out of lava, out of the water, out of the fire: nothing else meanwhile (a meal
@@ -1148,8 +1181,10 @@ public final class Bot {
 
     /** A bowman (skeleton, pillager...) within {@code r} blocks out for it, in sight. */
     boolean shooterOnMe(double r) {
-        return !body.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, body.getBoundingBox().inflate(r),
-                m -> m.isAlive() && m.getTarget() == body && m instanceof net.minecraft.world.entity.monster.RangedAttackMob && body.hasLineOfSight(m)).isEmpty();
+        // (A ghast's fireballs come from much further off than a bow's arrows.)
+        return !body.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, body.getBoundingBox().inflate(Math.max(r, 64)),
+                m -> m.isAlive() && m.getTarget() == body && Guardian.shooter(m)
+                        && m.distanceTo(body) <= (m instanceof net.minecraft.world.entity.monster.Ghast ? Math.max(r, 64) : r) && body.hasLineOfSight(m)).isEmpty();
     }
 
     /**

@@ -15,6 +15,8 @@ oder `/bob`-Befehle nutzen. Dann:
 
 **Bob baut nie ab, was Spieler gebaut haben.**
 
+Bob passt auch auf sich selbst auf. Er rechnet laufend, wie lange seine Herzen gegen das reichen, was ihn gerade angreift. Würde er einen Kampf verlieren, mauert er sich ein, steigt auf eine Säule außer Reichweite oder gräbt sich ein, bevor es zu spät ist, egal was er gerade tut. Danach isst er und wartet, bis er wieder fit ist.
+
 ## Loslegen
 
 1. Fabric Loader 0.19.5+ und Fabric API für Minecraft 26.3 (Java 25) installieren, dann die Bob-Jar
