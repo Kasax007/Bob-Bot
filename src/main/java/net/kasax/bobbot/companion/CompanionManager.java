@@ -48,6 +48,17 @@ public final class CompanionManager {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> joined(server, handler.player));
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> left(server, handler.player));
         ServerTickEvents.END_SERVER_TICK.register(CompanionManager::tick);
+        // Back on his feet with everything he had (if he keeps it): the pack of the body that died.
+        net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents.COPY_FROM.register((old, now, alive) -> {
+            if (alive || !(now instanceof BotPlayer)) return;
+            Companion c = of(old);
+            if (c != null && c.settings.keepInventory) {
+                now.getInventory().replaceWith(old.getInventory());
+                now.experienceLevel = old.experienceLevel;
+                now.experienceProgress = old.experienceProgress;
+                now.totalExperience = old.totalExperience;
+            }
+        });
     }
 
     private static void load(MinecraftServer server) {
@@ -131,6 +142,7 @@ public final class CompanionManager {
         if (c.bot.body() != null) c.lastPos = GlobalPos.of(c.bot.body().level().dimension(), c.bot.body().blockPosition());
         BotManager.remove(server, c.bot);
         c.bot = null;
+        StatusShow.gone(c);
         BobSavedData.get(server).touch();
     }
 

@@ -123,7 +123,7 @@ public final class WorkOrders {
     }
 
     /** The box marked with the wand (or the work area the owner stands in) dug out. */
-    static void dig(ServerPlayer p, Companion c) {
+    public static void dig(ServerPlayer p, Companion c) {
         BlockPos[] box = Wand.box(p);
         if (box != null) {
             Orders.give(p, c, new QuarryJob(box[0], box[1]), false);

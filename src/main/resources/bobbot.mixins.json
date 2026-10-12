@@ -7,7 +7,10 @@
     "ConnectionAccessor",
     "FishingHookAccessor",
     "BlockItemMixin",
-    "LevelChunkMixin"
+    "LevelChunkMixin",
+    "BotKeepsPackMixin",
+    "SleepIgnoresBobMixin",
+    "ArmorStandAccessor"
   ],
   "client": [],
   "injectors": {

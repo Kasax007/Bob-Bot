@@ -67,6 +67,8 @@ public final class BobCommands {
             var root = Commands.literal("bob")
                     .executes(ctx -> on(ctx, Menus::show))
                     .then(simple("help", Menus::show))
+                    .then(simple("panel", (p, c) -> ControlPanel.open(p, c)))
+                    .then(simple("gui", (p, c) -> ControlPanel.open(p, c)))
                     .then(simple("menu", Menus::show))
                     .then(Commands.literal("spawn").executes(ctx -> spawn(ctx, "Bob"))
                             .then(Commands.argument("name", StringArgumentType.word()).executes(ctx -> spawn(ctx, StringArgumentType.getString(ctx, "name")))))

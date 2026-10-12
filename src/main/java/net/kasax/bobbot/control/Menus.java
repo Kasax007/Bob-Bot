@@ -77,6 +77,7 @@ public final class Menus {
                 button(l.t("May you?", "Darfst du?"), "/bob protect check", l.t("Would Bob break the block you look at?", "Würde Bob den Block abbauen, auf den du schaust?")),
                 button(l.t("Set home", "Zuhause setzen"), "/bob home set", l.t("Your position becomes his home", "Deine Position wird sein Zuhause"))));
         p.sendSystemMessage(row(l, "More", "Mehr",
+                button(l.t("Panel", "Steuerpult"), "/bob panel", l.t("All orders as icons (right click Bob, or the B key)", "Alle Befehle als Symbole (Rechtsklick auf Bob oder Taste B)")),
                 button(l.t("Inventory", "Inventar"), "/bob inventory", l.t("Open his inventory: give him tools, armour, food", "Sein Inventar öffnen: Werkzeug, Rüstung, Essen geben")),
                 button(l.t("Give me all", "Gib mir alles"), "/bob giveall", l.t("Everything but his kit, to you", "Alles außer seiner Ausrüstung, an dich")),
                 button(l.t("Queue", "Warteschlange"), "/bob queue", l.t("What comes next", "Was als Nächstes kommt")),

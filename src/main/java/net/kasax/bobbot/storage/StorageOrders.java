@@ -72,7 +72,8 @@ public final class StorageOrders {
             Orders.select(p, c);
             ItemStack held = p.getItemInHand(hand);
             if (p.isShiftKeyDown() && !held.isEmpty() && !Wand.is(held)) gift(p, c, held);
-            else PackMenu.open(p, c);
+            else if (p.isShiftKeyDown()) PackMenu.open(p, c);
+            else net.kasax.bobbot.control.ControlPanel.open(p, c);
             return InteractionResult.SUCCESS;
         });
         AttackEntityCallback.EVENT.register((player, level, hand, entity, hit) -> {

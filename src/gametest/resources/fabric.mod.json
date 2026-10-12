@@ -10,7 +10,8 @@
       "net.kasax.bobbot.gametest.ProtectionTests",
       "net.kasax.bobbot.gametest.StorageTests",
       "net.kasax.bobbot.gametest.WorkTests",
-      "net.kasax.bobbot.gametest.BuildTests"
+      "net.kasax.bobbot.gametest.BuildTests",
+      "net.kasax.bobbot.gametest.PanelTests"
     ]
   },
   "depends": {

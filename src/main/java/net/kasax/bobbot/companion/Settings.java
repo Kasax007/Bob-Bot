@@ -41,9 +41,13 @@ public final class Settings {
     public boolean deliverWhenFull = true;
     /** Takes no tool below this many uses left (keeps the owner's good pickaxe from breaking). */
     public int toolReserve = 10;
+    /** What he is doing, in a line over his head. */
+    public boolean nameTag = true;
+    /** The job and how far along it is, in a bar at the top of the owner's screen. */
+    public boolean bossBar = true;
 
     private static final List<String> KEYS = List.of("combat", "night", "talk", "followDistance", "teleport", "keepInventory",
-            "workWhileAway", "followWhenIdle", "replant", "torches", "protectStructures", "deliverWhenFull", "toolReserve");
+            "workWhileAway", "followWhenIdle", "replant", "torches", "protectStructures", "deliverWhenFull", "toolReserve", "nameTag", "bossBar");
 
     public static List<String> keys() {
         return KEYS;
@@ -79,6 +83,8 @@ public final class Settings {
                 case "torches" -> torches = bool(v);
                 case "protectStructures" -> protectStructures = bool(v);
                 case "deliverWhenFull" -> deliverWhenFull = bool(v);
+                case "nameTag" -> nameTag = bool(v);
+                case "bossBar" -> bossBar = bool(v);
                 default -> {
                     return "unknown setting " + key;
                 }
@@ -111,6 +117,8 @@ public final class Settings {
         m.put("protectStructures", String.valueOf(protectStructures));
         m.put("deliverWhenFull", String.valueOf(deliverWhenFull));
         m.put("toolReserve", String.valueOf(toolReserve));
+        m.put("nameTag", String.valueOf(nameTag));
+        m.put("bossBar", String.valueOf(bossBar));
         return m;
     }
 
