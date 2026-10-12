@@ -1,9 +1,11 @@
 # gradle
+# (Anchored at the root: "build/" alone also matched the source package net/kasax/bobbot/build
+# and left Bob's builder out of the repository.)
 
-.gradle/
-build/
-out/
-classes/
+/.gradle/
+/build/
+/out/
+/classes/
 
 # eclipse
 
@@ -20,7 +22,7 @@ classes/
 
 .settings/
 .vscode/
-bin/
+/bin/
 .classpath
 .project
 
@@ -30,7 +32,7 @@ bin/
 
 # fabric
 
-run/
+/run/
 
 # java
 
@@ -53,5 +55,3 @@ replay_*.log
 /PLAN_ROADMAP.md
 /ROADMAP_STATUS.md
 
-# runs
-run/
