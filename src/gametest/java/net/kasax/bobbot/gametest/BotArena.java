@@ -56,6 +56,15 @@ public final class BotArena {
     }
 
     /**
+     * The clock to morning (one o'clock in the day): it is the whole server's, so a test that
+     * wants night sets it back when done, and one that must not run at night sets it first.
+     */
+    public static void day(GameTestHelper h) {
+        var server = h.getLevel().getServer();
+        server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), "time set 1000");
+    }
+
+    /**
      * The flat arena with the floor carried twenty blocks further out on every side (into the
      * test's padding, which must be at least 24): room to run away, for the scenarios where
      * running is the answer - the bare arena's edge is a drop the bot rightly will not take.

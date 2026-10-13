@@ -287,7 +287,13 @@ public final class BotPathfinder {
         java.util.Arrays.fill(bestScore, Double.MAX_VALUE);
         int expanded = 0;
         while (!open.isEmpty() && expanded < maxNodes) {
-            if ((expanded & 255) == 0 && System.nanoTime() > until) break;
+            if ((expanded & 255) == 0) {
+                if (System.nanoTime() > until) break;
+                // (Called off - the walk dropped or set anew: the worker free for the next search.
+                // A called-off search ran on to its last node, and searches dropped every few
+                // ticks held up everyone's on the two workers.)
+                if (Thread.currentThread().isInterrupted()) return null;
+            }
             Node n = open.poll();
             if (n.closed) continue;
             n.closed = true;

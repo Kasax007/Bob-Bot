@@ -140,6 +140,7 @@ public final class MineTask implements BotTask {
                     // (At body height, feet and head, as a tunnel is dug: not the ceiling, where
                     // it reaches up badly and the drops fall who knows where.)
                     if (!rockStairs) target = wallRock(level, bot);
+                    if (!rockStairs && target == null) target = groundBlock(level, bot);
                     if (target == null) {
                         if (!rockStairs) bot.say("no rock at hand for " + what + ": a staircase down");
                         rockStairs = true;
@@ -155,7 +156,7 @@ public final class MineTask implements BotTask {
                     List<BlockPos> seen = new ArrayList<>();
                     for (BlockPos p : BotWorld.nearestN(level, bot.body().blockPosition(), sealed ? 5 : searching ? 12 : 28, sealed ? 4 : searching ? 8 : 20, blocks, true, skip, 12)) {
                         // (A trunk from the bottom: that one is in reach from the ground.)
-                        for (int i = 0; i < 12 && blocks.test(level.getBlockState(p.below())) && !skip.contains(p.below()) && bot.actions().mayBreak(p.below()); i++) p = p.below();
+                        p = endOfColumn(level, bot, p);
                         if (!seen.contains(p) && worthIt(level, bot, p)) seen.add(p);
                     }
                     if (!seen.isEmpty()) {
@@ -183,7 +184,7 @@ public final class MineTask implements BotTask {
             if (target == null) return search(bot);
             // A trunk (or any column of them) is taken from the bottom: that one is in reach from
             // the ground, the top ones only from a pillar.
-            for (int i = 0; i < 12 && blocks.test(level.getBlockState(target.below())) && !skip.contains(target.below()) && bot.actions().mayBreak(target.below()); i++) target = target.below();
+            target = endOfColumn(level, bot, target);
             if (searching) {
                 bot.navigator().stop();
                 if (explorer != null) explorer.pause(bot);
@@ -347,6 +348,52 @@ public final class MineTask implements BotTask {
             wet.add(p);
         }
         return null;
+    }
+
+    /**
+     * No wall about (a meadow, a plain): the ground round about, a block deep - the grass and dirt
+     * a player digs out of the field beside him for a pillar, the stone of a bare hillside - not
+     * the block under its own feet, nor one over a hole (a block deep is all it digs), nor a wet
+     * one. A staircase down for a few dozen blocks of soil took minutes, and by water it could
+     * not be dug at all (the fall tile, two self-play games).
+     */
+    private BlockPos groundBlock(ServerLevel level, Bot bot) {
+        if (SurfaceTask.underground(bot.body())) return null;
+        BlockPos feet = bot.body().blockPosition();
+        BlockPos best = null;
+        double bestD = Double.MAX_VALUE;
+        for (BlockPos p : BlockPos.betweenClosed(feet.offset(-6, -1, -6), feet.offset(6, -1, 6))) {
+            if (p.getX() == feet.getX() && p.getZ() == feet.getZ() || skip.contains(p) || !blocks.test(level.getBlockState(p))
+                    || !bot.actions().mayBreak(p)) continue;
+            BlockPos up = p.above(), down = p.below();
+            if (!level.getBlockState(up).getCollisionShape(level, up).isEmpty() || !level.getFluidState(up).isEmpty()) continue;
+            if (level.getBlockState(down).getCollisionShape(level, down).isEmpty() || !level.getFluidState(down).isEmpty()) continue;
+            boolean wet = false;
+            for (Direction d : Direction.values()) if (!level.getFluidState(p.relative(d)).isEmpty()) wet = true;
+            if (wet) continue;
+            double d = p.distSqr(feet);
+            if (d < bestD) {
+                bestD = d;
+                best = p.immutable();
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Where a column of these is taken: a trunk from the bottom (in reach from the ground), but
+     * sand and gravel from the top - from the bottom the rest of the column comes down, onto the
+     * head of one standing by it (a self-play game dug for flint under a gravel bank and
+     * suffocated in what came down, digging up through it for seventeen seconds).
+     */
+    private BlockPos endOfColumn(ServerLevel level, Bot bot, BlockPos p) {
+        if (level.getBlockState(p).getBlock() instanceof net.minecraft.world.level.block.FallingBlock) {
+            for (int i = 0; i < 12 && level.getBlockState(p.above()).getBlock() instanceof net.minecraft.world.level.block.FallingBlock
+                    && blocks.test(level.getBlockState(p.above())) && !skip.contains(p.above()) && bot.actions().mayBreak(p.above()); i++) p = p.above();
+            return p;
+        }
+        for (int i = 0; i < 12 && blocks.test(level.getBlockState(p.below())) && !skip.contains(p.below()) && bot.actions().mayBreak(p.below()); i++) p = p.below();
+        return p;
     }
 
     /** An ore of the vein being taken still in the wall a few steps away. */

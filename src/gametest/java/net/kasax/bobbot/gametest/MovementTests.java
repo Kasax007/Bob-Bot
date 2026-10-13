@@ -3,6 +3,8 @@ package net.kasax.bobbot.gametest;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.kasax.bobbot.bot.task.GoToTask;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 
 import static net.kasax.bobbot.gametest.BotArena.FEET;
@@ -65,9 +67,72 @@ public class MovementTests {
                 Blocks.OAK_LEAVES.defaultBlockState().setValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT, true));
         a.spawn(22, FEET + 7, 20);
         var body = a.bot().body();
+        long[] piled = {0};
         a.run(new net.kasax.bobbot.bot.task.WaitTask(1), 1200, () -> {
             h.assertTrue(body.getHealth() >= 19, "leaf_descent_over_pit: fell, " + body.getHealth() + " hp at " + body.position());
+            // (The way down started once, not afresh over its own walk every few ticks: a
+            // self-play game piled nine hundred of them up and never got down.)
+            piled[0] = Math.max(piled[0], a.bot().tasks().stream().filter(t -> t instanceof net.kasax.bobbot.bot.task.LeafDescentTask).count());
+            h.assertTrue(piled[0] <= 1, "leaf_descent_over_pit: " + piled[0] + " descents on the stack at once");
             return body.onGround() && body.getY() < a.abs(0, FEET + 1, 0).getY();
+        });
+    }
+
+    /**
+     * The same crown with a vine hanging in it right beside him, a leaf two below the vine (a
+     * jungle crown in a self-play game: the spot over the vine, a block off, walked for nine
+     * hundred times - a vine holds nobody, no way leads onto it): round it to the trunk, and down.
+     */
+    @GameTest(structure = STRUCTURE, maxTicks = 1200, skyAccess = true, padding = 8)
+    public void leafDescentPastVine(GameTestHelper h) {
+        BotArena a = BotArena.flat(h, "leaf_descent_past_vine");
+        a.fill(20, 1, 10, 30, GROUND, 30, Blocks.AIR);
+        a.fill(17, FEET, 20, 17, FEET + 5, 20, Blocks.OAK_LOG);
+        var leaves = Blocks.OAK_LEAVES.defaultBlockState().setValue(net.minecraft.world.level.block.LeavesBlock.PERSISTENT, true);
+        a.fill(15, FEET + 6, 18, 23, FEET + 6, 22, leaves);
+        a.fill(21, FEET + 6, 20, 21, FEET + 6, 20, Blocks.VINE.defaultBlockState().setValue(net.minecraft.world.level.block.VineBlock.EAST, true));
+        a.fill(21, FEET + 4, 20, 21, FEET + 4, 20, leaves);
+        a.spawn(22, FEET + 7, 20);
+        var body = a.bot().body();
+        long[] piled = {0};
+        a.run(new net.kasax.bobbot.bot.task.WaitTask(1), 1200, () -> {
+            h.assertTrue(body.getHealth() >= 19, "leaf_descent_past_vine: fell, " + body.getHealth() + " hp at " + body.position());
+            piled[0] = Math.max(piled[0], a.bot().tasks().stream().filter(t -> t instanceof net.kasax.bobbot.bot.task.LeafDescentTask).count());
+            h.assertTrue(piled[0] <= 1, "leaf_descent_past_vine: " + piled[0] + " descents on the stack at once");
+            return body.onGround() && body.getY() < a.abs(0, FEET + 1, 0).getY();
+        });
+    }
+
+    /**
+     * At the bottom of a flooded shaft that holds it down: water falling down the shaft onto a
+     * whirlpool a block high over a magma block (its pull at the feet stronger than any swimming,
+     * the falling water at the head no air) - a second shaft of still water two blocks off,
+     * joined at the bottom (a self-play game drowned "digging up" at nothing under a village's
+     * water): over to the still shaft, up and out.
+     * (In the whirlpool itself there is air, as in the game: the head is in the water above it.)
+     */
+    @GameTest(structure = STRUCTURE, maxTicks = 900, skyAccess = true, padding = 8)
+    public void airPastWhirlpool(GameTestHelper h) {
+        BotArena a = BotArena.flat(h, "air_past_whirlpool");
+        a.fill(18, GROUND - 10, 18, 24, GROUND, 22, Blocks.STONE);
+        a.fill(20, GROUND - 9, 20, 20, GROUND - 9, 20, Blocks.MAGMA_BLOCK);
+        a.fill(21, GROUND - 8, 20, 21, GROUND - 7, 20, Blocks.WATER);
+        a.fill(22, GROUND - 8, 20, 22, GROUND, 20, Blocks.WATER);
+        a.fill(20, GROUND, 20, 20, GROUND, 20, Blocks.WATER);
+        a.fill(20, GROUND - 7, 20, 20, GROUND - 1, 20, Blocks.WATER.defaultBlockState().setValue(net.minecraft.world.level.block.LiquidBlock.LEVEL, 8));
+        a.fill(20, GROUND - 8, 20, 20, GROUND - 8, 20, Blocks.BUBBLE_COLUMN.defaultBlockState()
+                .setValue(net.minecraft.world.level.block.BubbleColumnBlock.DRAG_DOWN, true));
+        a.spawn(20, GROUND - 8, 20, new ItemStack(Items.IRON_PICKAXE));
+        var body = a.bot().body();
+        body.setAirSupply(160);
+        body.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.FIRE_RESISTANCE, 1200));
+        boolean[] under = {false}, out = {false};
+        a.run(new net.kasax.bobbot.bot.task.WaitTask(1), 900, () -> {
+            if (a.bot().body() != body || !body.isAlive()) h.fail("air_past_whirlpool: drowned");
+            boolean eyeIn = body.isEyeInFluid(net.minecraft.tags.FluidTags.WATER);
+            under[0] |= eyeIn;
+            out[0] |= under[0] && !eyeIn && body.getY() > a.abs(0, GROUND - 1, 0).getY();
+            return out[0];
         });
     }
 
@@ -126,6 +191,40 @@ public class MovementTests {
             under[0] |= eyeIn;
             out[0] |= under[0] && !eyeIn && body.getY() > a.abs(0, GROUND - 5, 0).getY();
             return out[0];
+        });
+    }
+
+    /**
+     * Buried in a gravel bank (a self-play game dug for flint under one, the head in the gravel
+     * that came down, and suffocated digging "free" for seventeen seconds): out alive, a shovel
+     * in the pack.
+     */
+    @GameTest(structure = STRUCTURE, maxTicks = 600, skyAccess = true, padding = 8)
+    public void outOfAGravelBank(GameTestHelper h) {
+        BotArena a = BotArena.flat(h, "out_of_a_gravel_bank");
+        a.fill(17, FEET, 17, 23, FEET + 9, 23, Blocks.GRAVEL);
+        a.fill(20, FEET, 20, 20, FEET, 20, Blocks.AIR);
+        a.spawn(20, FEET, 20, new ItemStack(Items.STONE_SHOVEL), new ItemStack(Items.STONE_PICKAXE));
+        var body = a.bot().body();
+        a.run(new net.kasax.bobbot.bot.task.WaitTask(1), 600, () -> {
+            if (a.bot().body() != body || !body.isAlive()) h.fail("out_of_a_gravel_bank: suffocated");
+            return !body.isInWall() && h.getTick() > 100 && body.getHealth() > 0;
+        });
+    }
+
+    /** The same with the head at the corner of four columns of gravel (it stood off the middle of a block). */
+    @GameTest(structure = STRUCTURE, maxTicks = 600, skyAccess = true, padding = 8)
+    public void outOfAGravelBankOffCentre(GameTestHelper h) {
+        BotArena a = BotArena.flat(h, "out_of_a_gravel_bank_off_centre");
+        a.fill(17, FEET, 17, 24, FEET + 9, 24, Blocks.GRAVEL);
+        a.fill(20, FEET, 20, 21, FEET, 21, Blocks.AIR);
+        a.spawn(20, FEET, 20, new ItemStack(Items.STONE_SHOVEL), new ItemStack(Items.STONE_PICKAXE));
+        var body = a.bot().body();
+        var corner = a.abs(21, FEET, 21);
+        body.teleportTo(corner.getX(), corner.getY(), corner.getZ());
+        a.run(new net.kasax.bobbot.bot.task.WaitTask(1), 600, () -> {
+            if (a.bot().body() != body || !body.isAlive()) h.fail("out_of_a_gravel_bank_off_centre: suffocated");
+            return !body.isInWall() && h.getTick() > 100 && body.getHealth() > 0;
         });
     }
 }

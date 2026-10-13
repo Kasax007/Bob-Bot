@@ -164,4 +164,60 @@ public class WorkTests {
         h.assertTrue(kind.isInstance(j), "\"" + line + "\": " + (j == null ? "nothing" : j.getClass().getSimpleName()));
         c.stopAll();
     }
+
+    /**
+     * Blocks for the fall tile's pillar (soil or stone, whichever) on flat grass with no wall about:
+     * the grass of the field round about, a block deep - no staircase down for it (that took
+     * minutes in self-play, and by the water it could not be dug at all).
+     */
+    @GameTest(structure = STRUCTURE, maxTicks = 1400, skyAccess = true, padding = 8)
+    public void pillarBlocksFromTheField(GameTestHelper h) {
+        BotArena a = BotArena.flat(h, "pillar_blocks_from_the_field");
+        a.spawn(20, FEET, 20);
+        var body = a.bot().body();
+        var blocks = java.util.Set.of(Items.DIRT, Items.COBBLESTONE, Items.COBBLED_DEEPSLATE, Items.NETHERRACK);
+        boolean[] deep = {false};
+        a.run(new net.kasax.bobbot.bot.task.ObtainTask(blocks, 23), 1400, () -> {
+            if (body.getY() < a.abs(0, FEET - 1, 0).getY() - 0.5) deep[0] = true;
+            h.assertTrue(!deep[0], "pillar_blocks_from_the_field: dug deeper than the field's one block");
+            return net.kasax.bobbot.bot.plan.ObtainPlanner.countAny(body, blocks) >= 23 && a.bot().current() == null;
+        });
+    }
+
+    /**
+     * "5 dye colours", red and yellow already collected, orange next: another red and yellow made
+     * for it, and the orange - the first red and yellow kept. (Keeping every red dye there ever
+     * was, it made red dye thirty-six times in a self-play game, and never the orange.)
+     */
+    @GameTest(structure = STRUCTURE, maxTicks = 400, skyAccess = true, padding = 8)
+    public void orangeKeepsRedAndYellow(GameTestHelper h) {
+        BotArena a = BotArena.flat(h, "orange_keeps_red_and_yellow");
+        a.spawn(20, FEET, 20, new ItemStack(Items.DYE.pick(net.minecraft.world.item.DyeColor.RED)), new ItemStack(Items.DYE.pick(net.minecraft.world.item.DyeColor.YELLOW)), new ItemStack(Items.POPPY, 2),
+                new ItemStack(Items.DANDELION, 2));
+        var body = a.bot().body();
+        var kinds = java.util.Set.of(Items.DYE.pick(net.minecraft.world.item.DyeColor.RED), Items.DYE.pick(net.minecraft.world.item.DyeColor.YELLOW), Items.DYE.pick(net.minecraft.world.item.DyeColor.ORANGE));
+        a.run(new net.kasax.bobbot.bot.task.ObtainTask(java.util.Set.of(Items.DYE.pick(net.minecraft.world.item.DyeColor.ORANGE)), 1, new net.kasax.bobbot.bot.plan.ObtainPlanner()).keeping(kinds), 400,
+                () -> net.kasax.bobbot.bot.plan.ObtainPlanner.countAny(body, java.util.Set.of(Items.DYE.pick(net.minecraft.world.item.DyeColor.ORANGE))) >= 1
+                        && net.kasax.bobbot.bot.plan.ObtainPlanner.countAny(body, java.util.Set.of(Items.DYE.pick(net.minecraft.world.item.DyeColor.RED))) >= 1
+                        && net.kasax.bobbot.bot.plan.ObtainPlanner.countAny(body, java.util.Set.of(Items.DYE.pick(net.minecraft.world.item.DyeColor.YELLOW))) >= 1 && a.bot().current() == null);
+    }
+
+    /**
+     * Three flint from a gravel bank six high: the gravel taken from the top of its columns,
+     * nothing coming down on the head (a self-play game dug at the foot of a gravel bank and
+     * suffocated in what came down).
+     */
+    @GameTest(structure = STRUCTURE, maxTicks = 3600, skyAccess = true, padding = 8)
+    public void flintFromAGravelBank(GameTestHelper h) {
+        BotArena a = BotArena.flat(h, "flint_from_a_gravel_bank");
+        a.fill(24, FEET, 17, 28, FEET + 5, 23, Blocks.GRAVEL);
+        a.spawn(20, FEET, 20, new ItemStack(Items.STONE_SHOVEL));
+        var body = a.bot().body();
+        boolean[] buried = {false};
+        a.run(new net.kasax.bobbot.bot.task.ObtainTask(java.util.Set.of(Items.FLINT), 3), 3600, () -> {
+            buried[0] |= body.isInWall();
+            h.assertTrue(!buried[0], "flint_from_a_gravel_bank: buried in the gravel");
+            return net.kasax.bobbot.bot.plan.ObtainPlanner.countAny(body, java.util.Set.of(Items.FLINT)) >= 3 && a.bot().current() == null;
+        });
+    }
 }

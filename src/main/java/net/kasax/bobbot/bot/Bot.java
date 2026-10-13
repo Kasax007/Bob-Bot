@@ -661,7 +661,9 @@ public final class Bot {
         }
         // Up in a tree's crown (the spawn can be up there; seed 66 jumped about on the leaves and
         // fell to its death): down through the leaves at once, a block's fall at a time.
-        if (body.onGround() && !(top instanceof net.kasax.bobbot.bot.task.LeafDescentTask)
+        // (Not again while the way down is being walked along the crown: a self-play game started
+        // it afresh over its own walk every ten ticks, nine hundred times, the stack ever deeper.)
+        if (body.onGround() && tasks.stream().noneMatch(t -> t instanceof net.kasax.bobbot.bot.task.LeafDescentTask)
                 && net.kasax.bobbot.bot.task.LeafDescentTask.upATree(this)) {
             actions.reset();
             navigator.stop();
@@ -733,8 +735,10 @@ public final class Bot {
         // up into the light, where the zombies burn; arrows on the way end in the shield (seed 77,
         // hard: five zombies, two skeletons and a creeper in a cave - a skeleton rushed at four
         // blocks, a hole begun with the zombies at its elbow, dead). Better armour, more of them.
+        // (Not out of a hole or a box shut all round, though: in there they cannot get at it, and
+        // out of it - its hiding just over - it ran into the four of them and died walled in.)
         if (!running && !cornered && !welcomeExplosion
-                && !(BotTask.innermost(top) instanceof net.kasax.bobbot.bot.task.PillarFightTask)) {
+                && !(BotTask.innermost(top) instanceof net.kasax.bobbot.bot.task.PillarFightTask) && !Guardian.enclosed(body)) {
             var crowd = body.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, body.getBoundingBox().inflate(12, 6, 12),
                     m -> m.isAlive() && m.getTarget() == body && m instanceof net.minecraft.world.entity.monster.Enemy);
             int many = body.getArmorValue() >= 15 ? 6 : body.getArmorValue() >= 6 ? 5 : 4;
@@ -775,6 +779,8 @@ public final class Bot {
                     }
                     return;
                 }
+                // (Out after it, with room to run: the hunt and the threat sense deal with it.)
+                if (creeper && huntingCreeper((net.minecraft.world.entity.monster.Creeper) m)) continue;
                 // Hissing too close to get clear (its blast reaches some seven blocks): behind
                 // the shield, facing it, if there is one - that takes the blast.
                 if (creeper && m.distanceTo(body) < 3 && body.getOffhandItem().is(net.minecraft.world.item.Items.SHIELD)
@@ -832,7 +838,14 @@ public final class Bot {
         }
         // A creeper coming for it, not hissing yet: dealt with before it gets close, as a player
         // does. With a weapon and the hearts for it, killed (hit, a step back, hit); else away.
-        if (!fighting && !welcomeExplosion && !running) {
+        // (Not down off a pillar it fights from, nor with others already at it: those first, the
+        // creeper left to the threat sense - away, or the shield, when it hisses. In a self-play
+        // league "kill creeper" took it off its pillar, two zombies at its back, and that was it.)
+        boolean onPillar = tasks.stream().anyMatch(t -> BotTask.innermost(t) instanceof net.kasax.bobbot.bot.task.PillarFightTask);
+        boolean othersAtMe = !body.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, body.getBoundingBox().inflate(4),
+                m -> m.isAlive() && m.getTarget() == body && m instanceof net.minecraft.world.entity.monster.Enemy
+                        && !(m instanceof net.minecraft.world.entity.monster.Creeper)).isEmpty();
+        if (!fighting && !welcomeExplosion && !running && !onPillar && !othersAtMe) {
             for (var c : body.level().getEntitiesOfClass(net.minecraft.world.entity.monster.Creeper.class, body.getBoundingBox().inflate(7),
                     c -> c.isAlive() && c.getTarget() == body && c.getSwellDir() <= 0 && body.hasLineOfSight(c))) {
                 boolean armed = false;
@@ -1105,7 +1118,11 @@ public final class Bot {
         // (Not with a monster at it: eating stands still for a second and a half. Unless starving.)
         // (Nor with a bowman drawing on it in sight, however far: the meal is a second and a half
         // with the shield down - seed 88, hard: shot dead eating, a patrol's crossbows about.)
-        if ((food <= 14 || hurt) && (food <= 4 || !targeted(8) && !shooterOnMe(24)) && net.kasax.bobbot.bot.task.EatTask.bestFood(body) >= 0) {
+        // (And not with a bowman after it a dozen blocks off, in sight or not: a step and it is in
+        // sight again, drawing - league 5, shot eating.)
+        boolean bowmanNear = !body.level().getEntitiesOfClass(net.minecraft.world.entity.Mob.class, body.getBoundingBox().inflate(12),
+                m -> m.isAlive() && m.getTarget() == body && Guardian.shooter(m)).isEmpty();
+        if ((food <= 14 || hurt) && (food <= 4 || !targeted(8) && !shooterOnMe(24) && !bowmanNear) && net.kasax.bobbot.bot.task.EatTask.bestFood(body) >= 0) {
             actions.reset();
             reflex(new net.kasax.bobbot.bot.task.EatTask());
         }
@@ -1240,6 +1257,27 @@ public final class Bot {
         return null;
     }
 
+    /** How far the way {@link #openWayFrom} last found is open (blocks, less a little for the ways aside). */
+    public double openWayFree;
+
+    /** Room to run from a threat at {@code from}: at least {@code blocks} of open ground some way off it. */
+    public boolean roomToRun(net.minecraft.world.phys.Vec3 from, double blocks) {
+        openWayFrom(from, blocks + 2);
+        return openWayFree >= blocks;
+    }
+
+    /**
+     * Out after this creeper (its gunpowder, the kill) with the hearts for it and room to run:
+     * a hiss is answered with a blow and a few steps away (the threat sense), not with the shield
+     * (it would blow, the powder gone with it) or a long way off (in a self-play league one was
+     * hunted three times over that way, and the rocket never made).
+     */
+    public boolean huntingCreeper(net.minecraft.world.entity.monster.Creeper c) {
+        return BotTask.innermost(current()) instanceof net.kasax.bobbot.bot.task.KillTask k
+                && k.after(net.minecraft.world.entity.EntityTypes.CREEPER) && !welcomeExplosion
+                && body.getHealth() >= 12 && roomToRun(c.position(), 5);
+    }
+
     /**
      * Which way to run from a threat at {@code from}: straight away from it, or up to ninety
      * degrees off that, whichever has the most open ground ahead (not into a wall or a corner).
@@ -1289,6 +1327,7 @@ public final class Bot {
                 best = dir.scale(length);
             }
         }
+        openWayFree = bestFree;
         return best;
     }
 
